@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day 2 · Tokens, Context Window, Cost and Latency</title>
+<link rel="stylesheet" href="../../assets/style.css"></head><body><main>
+<div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
+
+<p class="tag">AI Engineer Prep · Day 2 of 100 · Wed 18 Nov 2026</p>
+<h1>Tokens, Context Window, Cost and Latency</h1>
+<p class="mut">Unit 1.2 · the four numbers behind every LLM call. Today’s DSA: arrays, traversal, prefix sums.</p>
+<div class="legend"><span style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
+
+<h2>0 · Warm-up (5 min, before new material)</h2>
+<div class="box why">Close everything. Redraw Day 1’s 6-box flowchart and say the TTNLP acronym aloud. Then peek. Two minutes of struggling now is worth more than a re-read.</div>
+
+<h2>1 · The gist</h2>
+<div class="box key">Everything an LLM does is measured in <mark>tokens</mark>. Tokens decide <b>what fits</b> (context window), <b>what you pay</b> (cost) and <b>how long you wait</b> (latency).</div>
+<div class="scroll"><table>
+<tr><th>✍️ Capture</th><th>💭 Create (your words)</th></tr>
+<tr><td>Token = chunk of text. About 4 characters, or ¾ of an English word.</td><td>My own example of a word that splits into 2+ tokens: ________</td></tr>
+<tr><td>Context window = max tokens the model can see at once (input + output).</td><td>What would I lose if my chat history got too long? ________</td></tr>
+</table></div>
+
+<h2>2 · The picture to remember</h2>
+<svg viewBox="0 0 360 350" role="img" aria-label="A vertical bar showing the context window split into system prompt, chat history, retrieved documents, your question and room for the answer">
+<rect class="s1" x="20" y="10" width="150" height="40"/><rect class="s2" x="20" y="50" width="150" height="110"/><rect class="s3" x="20" y="160" width="150" height="70"/><rect class="s4" x="20" y="230" width="150" height="30"/><rect class="s5" x="20" y="260" width="150" height="50"/>
+<g font-size="13" font-weight="700"><text x="185" y="35">System prompt</text><text x="185" y="110">Chat history</text><text x="185" y="198">Retrieved docs (RAG)</text><text x="185" y="250">Your question</text><text x="185" y="290">Room for the answer</text></g>
+<g font-size="11"><text x="185" y="50">rules + role, sent every call</text><text x="185" y="126">resent in full on every turn</text><text x="185" y="214">pasted-in knowledge</text><text x="185" y="287" dy="14">reserved output budget</text></g>
+<text x="95" y="335" text-anchor="middle" font-size="12">Everything must fit: input + output ≤ window limit</text>
+</svg>
+
+<h2>3 · Analogies</h2>
+<div class="grid">
+<div class="box ana"><b>Context window = whiteboard.</b> The model can only work with what’s on the board. When it’s full, the oldest notes get wiped. Nothing off the board exists for it.</div>
+<div class="box ana"><b>Cost = auto-rickshaw meter.</b> You pay per token, for reading (input) <i>and</i> writing (output), and writing costs more per unit.</div>
+<div class="box ana"><b>Latency = Hyderabad traffic.</b> First a wait before the vehicle moves (time to first token), then a steady speed (tokens per second).</div>
+</div>
+
+<h2>4 · Definitions</h2>
+<div class="grid">
+<div class="box def"><b>Token</b><br>A reusable chunk from a fixed vocabulary. Common words are 1 token; rare words split into pieces.</div>
+<div class="box def"><b>Context window</b><br>The maximum tokens (input + output) the model handles in one call, e.g. 128k.</div>
+<div class="box def"><b>Input / output tokens</b><br>Input = everything you send. Output = what the model writes back. Billed separately.</div>
+<div class="box def"><b>TTFT</b><br>Time to first token: the wait before the answer starts appearing.</div>
+<div class="box def"><b>Tokens per second</b><br>How fast the answer streams out once it starts.</div>
+<div class="box def"><b>max_tokens</b><br>A cap you set on the answer length. Too low = the answer is cut off mid-sentence.</div>
+</div>
+
+<h2>5 · Worked numbers (illustrative prices, check your provider)</h2>
+<div class="scroll"><table>
+<tr><th>Question</th><th>Formula</th><th>Example</th></tr>
+<tr><td>Cost of one call</td><td>(in × in_price + out × out_price) ÷ 1,000,000</td><td>3,000 in @ $2/M + 500 out @ $8/M = $0.006 + $0.004 = <b>$0.010</b></td></tr>
+<tr><td>Daily cost</td><td>cost per call × calls</td><td>1,000 calls × $0.010 = <b>$10/day</b></td></tr>
+<tr><td>Total wait</td><td>TTFT + output tokens ÷ speed</td><td>0.5 s + 400 ÷ 50 tok/s = <b>8.5 s</b></td></tr>
+</table></div>
+
+<h2>6 · The “why?” ladder</h2>
+<div class="box why"><b>Why tokens and not words or letters?</b><br>A fixed vocabulary of reusable chunks handles any word, typo or new name, while keeping sequences much shorter than letters would.</div>
+<div class="box why"><b>Why do Hindi or Telugu text cost more than English?</b><br>Tokenizers are trained mostly on English text, so other scripts are split into more, smaller pieces. Same meaning, more tokens, more cost, less room.</div>
+<div class="box why"><b>Why is output pricier than input?</b><br>Input tokens are processed together in parallel. Output tokens come one at a time: each needs a full pass through the model (Day 1’s loop).</div>
+<div class="box why"><b>Why do long chats get slower and costlier?</b><br>The model has no memory between calls. The app resends the whole history every turn, so input tokens grow every turn.</div>
+<div class="box why"><b>Why not stuff everything into the window?</b><br>It costs more, starts later, and facts buried in the middle of a huge input are used less reliably. Picking only the relevant pieces is the idea behind RAG (Phase 2).</div>
+<div class="box warn"><b>Pitfalls:</b> assuming characters ≈ tokens · forgetting the answer shares the window · setting <code>max_tokens</code> so low that answers get cut off.</div>
+
+<h2>7 · Levers you control</h2>
+<div class="scroll"><table>
+<tr><th>Goal</th><th>Do this</th></tr>
+<tr><td>Spend less</td><td>Shorter prompts, smaller model for easy tasks, cap <code>max_tokens</code>, cache repeated prefixes</td></tr>
+<tr><td>Feel faster</td><td>Stream the answer, shrink the input, ask for concise output</td></tr>
+<tr><td>Avoid overflow</td><td>Trim or summarise old history, retrieve only relevant chunks</td></tr>
+</table></div>
+
+<h2>8 · Memory hooks</h2>
+<div class="box key"><b>Acronym: TCCL</b> → “<b>T</b>ea <b>C</b>ups <b>C</b>ost <b>L</b>ittle” = <b>T</b>okens, <b>C</b>ontext, <b>C</b>ost, <b>L</b>atency.</div>
+<div class="box ana"><b>Memory palace: your study room, 4 stops.</b>
+<ol><li><b>Door:</b> Scrabble tiles spill out, each tile a chunk of a word. <i>(Tokens)</i></li>
+<li><b>Wall:</b> a whiteboard so full that the top lines are being rubbed off. <i>(Context window)</i></li>
+<li><b>Desk:</b> an auto meter ticking up for every tile you read and a faster tick for every tile you write. <i>(Cost)</i></li>
+<li><b>Shelf:</b> an hourglass: sand waits before the first grain falls, then drips steadily. <i>(Latency)</i></li></ol></div>
+
+<h2>9 · Try it (15 min)</h2>
+<p>Use your provider’s token counter (or <code>tiktoken</code>) on these three and fill in:</p>
+<div class="scroll"><table><tr><th>Text</th><th>Characters</th><th>Tokens</th><th>Chars per token</th></tr>
+<tr><td>“The famous Hyderabadi biryani”</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>The same sentence in Hindi or Telugu</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>A 3-line Python function</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table></div>
+
+<h2>10 · Coding question: trim chat history to fit the window</h2>
+<p class="mut">Easy–medium · 15–20 min · skills: lists, loops, reverse traversal. <b>Attempt it first</b>, then the hint, then the solution.</p>
+<div class="box key"><b>Task.</b> <code>messages</code> is a list of dicts with <code>role</code> and <code>tokens</code>. <code>messages[0]</code> is the system message and must always stay. Write <code>trim_history(messages, limit, reserve_output)</code> that keeps the system message plus the <b>most recent</b> messages that fit in <code>limit - reserve_output</code> tokens, returned in original order. Stop at the first message that doesn’t fit (no gaps). If the system message alone is too big, raise <code>ValueError</code>.</div>
+<pre><code>messages = [
+  {"role": "system",    "tokens": 50},
+  {"role": "user",      "tokens": 200},
+  {"role": "assistant", "tokens": 300},
+  {"role": "user",      "tokens": 100},
+  {"role": "assistant", "tokens": 250},
+  {"role": "user",      "tokens": 80},
+]
+# budget = 800 - 200 = 600
+trim_history(messages, 800, 200)
+# keeps system(50) + user(100) + assistant(250) + user(80) = 480 tokens
+# the assistant(300) message would not fit, so it and everything older is dropped
+
+trim_history(messages, 100, 60)   # budget 40 &lt; system 50 -> ValueError</code></pre>
+<details><summary>💡 Hint (open only after trying)</summary>Subtract the system message from the budget first. Then walk the remaining messages from newest to oldest, keeping a running “tokens left”. When one doesn’t fit, <code>break</code>. Reverse the kept list at the end.</details>
+<details><summary>✅ Solution + explanation (open after your attempt)</summary>
+<pre><code>def trim_history(messages, limit, reserve_output):
+    budget = limit - reserve_output
+    system = messages[0]
+    if system["tokens"] &gt; budget:
+        raise ValueError("system prompt too large")
+    remaining = budget - system["tokens"]
+    kept = []
+    for msg in reversed(messages[1:]):
+        if msg["tokens"] &gt; remaining:
+            break
+        kept.append(msg)
+        remaining -= msg["tokens"]
+    return [system] + kept[::-1]</code></pre>
+<b>How it works</b>
+<ol>
+<li><b>Budget first.</b> The answer shares the window, so we reserve room for it before counting input.</li>
+<li><b>Newest first.</b> Recent turns matter most to the next answer, so we fill the budget from the end backwards.</li>
+<li><b>Why <code>break</code> and not <code>continue</code>?</b> Skipping a big message and keeping an older small one would leave gaps: an answer without its question. Contiguous recent history stays coherent.</li>
+<li><b>Reverse at the end</b> because we collected newest-first and the model needs chronological order.</li>
+<li><b>Cost:</b> O(n) time, one pass. The running “remaining” is the same idea as a prefix sum (today’s DSA topic).</li>
+</ol>
+<div class="box why"><b>What would a real app do differently?</b> Count tokens with the model’s tokenizer instead of trusting stored numbers, and <i>summarise</i> the dropped part instead of deleting it, so key facts survive.</div>
+</details>
+
+<h2>11 · Outcome check (say it aloud)</h2>
+<p><b>Your chatbot gets slower and more expensive the longer a conversation runs. Explain why and give two fixes.</b></p>
+<details><summary>Model answer</summary>The model has no memory, so the app resends the whole history on every turn. Input tokens, cost and time to first token all grow each turn, and eventually the window overflows. Fixes: trim old messages to a token budget, summarise older turns, or retrieve only relevant pieces instead of resending everything.</details>
+
+<h2>12 · Spaced revision</h2>
+<div class="scroll"><table>
+<tr><th>When</th><th>Do this (active recall)</th></tr>
+<tr><td>Tonight · 5 min</td><td>Redraw the stacked context bar and walk the 4-stop study room aloud.</td></tr>
+<tr><td>Thu 19 Nov (Day 3)</td><td>Answer the 5 “why?” questions aloud, then check section 6.</td></tr>
+<tr><td>Sat 21 Nov (Day 5)</td><td>Re-solve the coding question from a blank file.</td></tr>
+<tr><td>Wed 25 Nov (Day 9)</td><td>Teach tokens, cost and latency to someone in 2 minutes.</td></tr>
+<tr><td>Wed 9 Dec (Day 23)</td><td>Redraw the diagram, recite TCCL, and redo the outcome answer.</td></tr>
+</table></div>
+<p class="mut">Tomorrow (Day 3): multimodal models and attention intuition (Q, K, V).</p>
+<div class="nav"><a href="../day-001-what-an-llm-does/">← Day 1</a><span class="mut">Next: Day 3 →</span></div>
+</main></body></html>

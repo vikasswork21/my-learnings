@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day 1 · What an LLM Does</title>
+<link rel="stylesheet" href="../../assets/style.css"></head><body><main>
+<div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
+
+<p class="tag">AI Engineer Prep · Day 1 of 100 · Tue 17 Nov 2026</p>
+<h1>What an LLM Does</h1>
+<p class="mut">Unit 1.1 · Next-token prediction · one 45-minute focus block: quiet room, phone away, then a 5-minute break.</p>
+<div class="legend"><span class="def" style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
+
+<h2>1 · The gist (read this first)</h2>
+<div class="box key"><b>An LLM is a super-powered autocomplete.</b> It predicts the <mark>next token</mark>, adds it to the text, and repeats, one token at a time.</div>
+<div class="scroll"><table>
+<tr><th>✍️ Capture (what it says)</th><th>💭 Create (my own words, fill in)</th></tr>
+<tr><td>Text becomes tokens, tokens become numbers, layers refine them, the model outputs a likelihood for every possible next token.</td><td>Which part is hardest to picture? ____________</td></tr>
+<tr><td>It is not a database, not a search engine, not a fixed program.</td><td>An example from my WMS/RAG work: ____________</td></tr>
+</table></div>
+
+<h2>2 · The picture to remember (redraw it from memory tonight)</h2>
+<svg viewBox="0 0 370 580" role="img" aria-label="Flowchart: text to tokens to numbers to layers to probabilities to pick one, then loop back">
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="currentColor"/></marker></defs>
+<g stroke="currentColor" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M165 74V98"/><path d="M165 164V188"/><path d="M165 254V278"/><path d="M165 344V368"/><path d="M165 434V458"/><path d="M300 500H350V42H306" stroke-dasharray="5 4"/></g>
+<rect class="s1" x="30" y="10" width="270" height="64" rx="10"/><text x="165" y="36" text-anchor="middle" font-size="14" font-weight="700">① Text in</text><text x="165" y="58" text-anchor="middle" font-size="12">“The famous Hyderabadi …”</text>
+<rect class="s2" x="30" y="100" width="270" height="64" rx="10"/><text x="165" y="126" text-anchor="middle" font-size="14" font-weight="700">② Tokens (chunks)</text><text x="165" y="148" text-anchor="middle" font-size="12">[The] [ famous] [ Hyder] [abadi]</text>
+<rect class="s3" x="30" y="190" width="270" height="64" rx="10"/><text x="165" y="216" text-anchor="middle" font-size="14" font-weight="700">③ Numbers (embeddings)</text><text x="165" y="238" text-anchor="middle" font-size="12">each token → [0.12, −0.8, 0.5 …]</text>
+<rect class="s4" x="30" y="280" width="270" height="64" rx="10"/><text x="165" y="306" text-anchor="middle" font-size="14" font-weight="700">④ Layers (refine)</text><text x="165" y="328" text-anchor="middle" font-size="12">each token looks at the others</text>
+<rect class="s5" x="30" y="370" width="270" height="64" rx="10"/><text x="165" y="396" text-anchor="middle" font-size="14" font-weight="700">⑤ Probabilities</text><text x="165" y="418" text-anchor="middle" font-size="12">biryani 71% · haleem 12% · kebab 6% …</text>
+<rect class="s3" x="30" y="460" width="270" height="80" rx="10"/><text x="165" y="487" text-anchor="middle" font-size="14" font-weight="700">⑥ Pick one → append</text><text x="165" y="509" text-anchor="middle" font-size="12">“… Hyderabadi biryani”</text><text x="165" y="527" text-anchor="middle" font-size="12">goes back into ① and repeats</text>
+</svg>
+<p class="mut" style="text-align:center">Percentages are made up for illustration. Dashed line = the loop (this is “autoregressive”).</p>
+
+<h2>3 · Analogy</h2>
+<div class="box ana"><b>The chai-stall friend.</b> Imagine a friend who has overheard billions of conversations. You say “Hyderabad’s famous ___” and he instantly <i>feels</i> that “biryani” is very likely, “haleem” fairly likely, “bicycle” almost impossible. He doesn’t look anything up; he just completes the sentence from what he has absorbed. Then he completes the <i>next</i> word the same way. That is an LLM.</div>
+
+<h2>4 · Definitions (written once, in plain words)</h2>
+<div class="grid">
+<div class="box def"><b>Token</b><br>A chunk of text (a word, part of a word, a symbol) that the model reads and writes. Roughly ¾ of an English word.</div>
+<div class="box def"><b>Embedding</b><br>A list of numbers that stands for a token’s meaning. Similar meanings sit close together.</div>
+<div class="box def"><b>Layer</b><br>One processing stage that refines every token’s numbers using the surrounding tokens. Real models stack many.</div>
+<div class="box def"><b>Probabilities</b><br>A score for every token in the vocabulary (tens of thousands) saying how likely it is to come next. They sum to 100%.</div>
+<div class="box def"><b>Parameters (8B, 70B)</b><br>The learned numbers inside the model. 8B = 8 billion. They store what the model learned.</div>
+<div class="box def"><b>Autoregressive</b><br>It feeds its own output back in as input, one token at a time.</div>
+</div>
+
+<h2>5 · What it is NOT</h2>
+<div class="scroll"><table>
+<tr><th>It looks like…</th><th>But actually…</th></tr>
+<tr><td>A database</td><td>Nothing is stored as rows to fetch. Each answer is <b>generated</b> fresh from learned numbers.</td></tr>
+<tr><td>A search engine</td><td>No live web or index lookup unless you give it a tool.</td></tr>
+<tr><td>A fixed program</td><td>No if/else rules. Behaviour comes from learned numbers, so the same prompt can give different answers.</td></tr>
+</table></div>
+
+<h2>6 · The “why?” ladder</h2>
+<div class="box why"><b>Why does guessing the next word make it “know” things?</b><br>To guess well across trillions of tokens it must absorb grammar, facts and patterns of reasoning. Knowledge is a by-product of getting good at guessing.</div>
+<div class="box why"><b>Why is it fluent but sometimes wrong?</b><br>It is trained to produce a <mark>likely</mark> continuation, not a <mark>true</mark> one. Likely and true often overlap, but nothing checks facts. A confident tone is just a style it learned.</div>
+<div class="box why"><b>Why do I get different answers each time?</b><br>It <i>samples</i> from the probabilities instead of always taking the top one. (You control this with temperature on Day 4.)</div>
+<div class="box why"><b>Why do chat models follow instructions, refuse and hedge?</b><br>A raw “base” model only autocompletes (“brilliant but useless”: asked a question, it may output more questions). Extra training on instruction/answer pairs (SFT), then human feedback (RLHF), turns it into an assistant.</div>
+<div class="box why"><b>Why isn’t bigger always better?</b><br>More parameters can mean more capability, but also more cost and delay. For simple tasks a small model is often enough. You choose by testing (Day 6).</div>
+<div class="box warn"><b>Pitfall:</b> “It answered confidently, so it must be right.” Confidence is not evidence.</div>
+
+<h2>7 · Chat-model chain (comedian analogy)</h2>
+<div class="scroll"><table>
+<tr><th>Stage</th><th>What happens</th><th>Comedian</th></tr>
+<tr><td>Pre-training</td><td>Next-token prediction on huge text → base model</td><td>Reads every joke book in the library</td></tr>
+<tr><td>SFT</td><td>Learns from curated question → answer examples</td><td>Practises a structured set</td></tr>
+<tr><td>RLHF</td><td>Humans rank answers; model is nudged toward preferred ones</td><td>Performs live; keeps what gets laughs</td></tr>
+</table></div>
+
+<h2>8 · Memory hooks</h2>
+<div class="box key"><b>Acronym: TTNLP</b> → “<b>T</b>ea <b>T</b>astes <b>N</b>ice, <b>L</b>ovely <b>P</b>al!” = <b>T</b>ext, <b>T</b>okens, <b>N</b>umbers, <b>L</b>ayers, <b>P</b>robabilities (then pick, append, repeat).</div>
+<div class="box ana"><b>Memory palace (walk your home clockwise, 5 places):</b>
+<ol><li><b>Front door:</b> a giant text message is knocking. <i>(Text)</i></li>
+<li><b>Shoe rack:</b> words snap into Lego bricks. <i>(Tokens)</i></li>
+<li><b>Sofa:</b> the bricks glow with floating digits. <i>(Numbers)</i></li>
+<li><b>Kitchen:</b> a tall layered dum biryani; each layer improves the flavour. <i>(Layers)</i></li>
+<li><b>Balcony:</b> a roulette wheel with percentages spins, picks a winner and throws it back through the front door. <i>(Probabilities → pick → repeat)</i></li></ol>
+Make it loud, silly and emotional: you will remember the scene, then the words.</div>
+
+<h2>9 · Try it (15 min, from the roadmap)</h2>
+<p>Send the <b>same prompt five times</b> to any model (e.g. “Give me one tagline for a biryani shop”). Fill in:</p>
+<div class="scroll"><table><tr><th>Run</th><th>What changed?</th></tr><tr><td>1 vs 2</td><td>&nbsp;</td></tr><tr><td>3 vs 4</td><td>&nbsp;</td></tr><tr><td>5</td><td>Which words stayed the same? Why might that be?</td></tr></table></div>
+
+<h2>10 · Coding question: a tiny next-token predictor</h2>
+<p class="mut">Easy–medium · 15–20 min · skills: dict, Counter, loops. <b>Attempt it first</b>, then open the hint, then the solution.</p>
+<div class="box key"><b>Task.</b> Write three functions that mimic an LLM in the simplest possible way (it looks only at the <i>previous word</i>):<br>
+<code>build_model(text)</code> counts, for each word, which words follow it and how often.<br>
+<code>predict_next(model, word)</code> returns the most frequent follower, or <code>None</code> if the word was never followed by anything. On a tie, return the one seen first.<br>
+<code>generate(model, start, n)</code> starts at <code>start</code> and repeatedly appends the predicted next word, up to <code>n</code> times, stopping early if there is no prediction. Return the words joined by spaces.</div>
+<pre><code>text = "the cat sat on the mat the cat ate the fish"
+model = build_model(text)
+
+predict_next(model, "the")   # "cat"   (cat x2, mat x1, fish x1)
+predict_next(model, "cat")   # "sat"   (sat and ate tie; sat came first)
+predict_next(model, "fish")  # None    (nothing follows "fish")
+generate(model, "the", 5)    # "the cat sat on the cat"</code></pre>
+<details><summary>💡 Hint (open only after trying)</summary>Pair each word with its successor using <code>zip(words, words[1:])</code>. A <code>defaultdict(Counter)</code> saves you the “is the key there yet?” code. <code>max(..., key=...)</code> returns the first maximum it meets.</details>
+<details><summary>✅ Solution + explanation (open after your attempt)</summary>
+<pre><code>from collections import defaultdict, Counter
+
+def build_model(text):
+    words = text.split()
+    model = defaultdict(Counter)
+    for cur, nxt in zip(words, words[1:]):
+        model[cur][nxt] += 1
+    return model
+
+def predict_next(model, word):
+    if word not in model:
+        return None
+    return max(model[word].items(), key=lambda kv: kv[1])[0]
+
+def generate(model, start, n):
+    out = [start]
+    for _ in range(n):
+        nxt = predict_next(model, out[-1])
+        if nxt is None:
+            break
+        out.append(nxt)
+    return " ".join(out)</code></pre>
+<b>How it works</b>
+<ol>
+<li><b>build_model</b> pairs every word with the one after it and counts the pairs. That table is the simplest possible “probability of next word given current word”.</li>
+<li><b>predict_next</b> picks the highest count: always taking the top choice is called <i>greedy decoding</i> (like temperature 0). <code>max</code> keeps the first of equal counts, which gives our “seen first” tie rule.</li>
+<li><b>generate</b> feeds each output back in as the next input: that is the <i>autoregressive loop</i> from your flowchart. It stops on <code>None</code> because the model has never seen anything follow that word.</li>
+<li><b>Cost:</b> building is O(n) for n words; each prediction scans the few distinct followers; generating n words is roughly O(n·k).</li>
+</ol>
+<div class="box why"><b>Why does it say “the cat sat on the cat”?</b> It only remembers one word of context and always takes the top choice, so it drifts and can loop. A real LLM looks at thousands of tokens, learns patterns with layers of numbers instead of a count table, and <i>samples</i> instead of always taking the top. Try next: use <code>random.choices(list(c), weights=c.values())</code> in place of <code>max</code> and run it five times. You have just rebuilt the “different answer each time” effect.</div>
+</details>
+
+<h2>11 · Outcome check (cover the answer, say it aloud)</h2>
+<p><b>Explain in two sentences how an LLM produces an answer and why it can sound confident while being wrong.</b></p>
+<details><summary>Model answer</summary>An LLM turns your text into tokens and numbers, passes them through layers to get a probability for every possible next token, picks one, appends it and repeats. Because it is trained to produce a <i>likely</i> continuation rather than check facts, it can state wrong things in a perfectly fluent, confident tone.</details>
+
+<h2>12 · Spaced revision (you forget ~80% in 48 h, so beat the curve)</h2>
+<div class="scroll"><table>
+<tr><th>When</th><th>Do this (active recall, not just rereading)</th></tr>
+<tr><td>Tonight · 5 min</td><td>Close the page. Redraw the 6-box flowchart and walk the home palace aloud.</td></tr>
+<tr><td>Wed 18 Nov (Day 2)</td><td>Answer the 5 “why?” questions out loud, then check section 6.</td></tr>
+<tr><td>Fri 20 Nov (Day 4)</td><td>Re-solve the coding question from a blank file.</td></tr>
+<tr><td>Tue 24 Nov (Day 8)</td><td>Teach it to someone in 2 minutes (teaching = learning twice).</td></tr>
+<tr><td>Tue 8 Dec (Day 22)</td><td>Redraw the flowchart + TTNLP + outcome answer from memory.</td></tr>
+</table></div>
+<p class="mut">Tomorrow (Day 2): Tokens, context window and latency.</p>
+<div class="nav"><span></span><a href="../day-002-tokens-context-cost-latency/">Next: Day 2 →</a></div>
+</main></body></html>
