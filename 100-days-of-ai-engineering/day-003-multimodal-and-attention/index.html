@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day 3 · Multimodal Models and Attention</title>
+<link rel="stylesheet" href="../../assets/style.css"><script defer src="../../assets/app.js"></script></head><body data-day="d3" data-date="2026-11-19"><main>
+<div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
+
+<p class="tag">AI Engineer Prep · Day 3 of 100 · Thu 19 Nov 2026</p>
+<h1>Multimodal Models and Attention (Q, K, V)</h1>
+<p class="mut">Unit 1.3 · how one model reads text, images and audio, and how tokens decide what to focus on. Today’s DSA: strings (reverse, palindrome, anagram).</p>
+<div class="legend"><span style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
+
+<div class="box key recap"><b>⭐ Top 3 to remember</b><ol><li>Text, images and audio all become tokens, then numbers, then go through the same layers.</li><li>Attention: each token’s Query is matched against every Key, then it blends the Values.</li><li>An image is a grid of patch tokens: more pixels, more tokens, and attention work grows with tokens².</li></ol></div>
+
+<h2>0 · Warm-up (5 min)</h2>
+<div class="box why">Close everything. Redraw Day 2’s stacked context bar and say TCCL. Then redo Day 1’s flowchart from memory. Peek only when stuck.</div>
+
+<h2>1 · The gist</h2>
+<div class="box key">An LLM only ever sees <mark>tokens</mark>. A picture or a voice note is just sliced into pieces and turned into numbers. <mark>Attention</mark> is how each piece decides which other pieces matter.</div>
+<div class="scroll"><table>
+<tr><th>✍️ Capture</th><th>💭 Create (your words)</th></tr>
+<tr><td>Modality = a kind of input: text, image, audio, video, PDF.</td><td>A task at work that needs more than text: ________</td></tr>
+<tr><td>Attention = each token takes a weighted blend of information from all tokens.</td><td>A sentence where a word needs context to make sense: ________</td></tr>
+</table></div>
+
+<h2>2 · The picture to remember</h2>
+<svg data-steps viewBox="0 0 370 470" role="img" aria-label="Flowchart: inputs, sliced into pieces, mapped to numbers, attention, reply">
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="currentColor"/></marker></defs>
+<g stroke="currentColor" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M165 74V98"/><path d="M165 164V188"/><path d="M165 254V278"/><path d="M165 344V368"/></g>
+<rect class="s1" x="30" y="10" width="270" height="64" rx="10"/><text x="165" y="36" text-anchor="middle" font-size="14" font-weight="700">① Inputs</text><text x="165" y="58" text-anchor="middle" font-size="12">text · image · audio · PDF</text>
+<rect class="s2" x="30" y="100" width="270" height="64" rx="10"/><text x="165" y="126" text-anchor="middle" font-size="14" font-weight="700">② Slice into pieces</text><text x="165" y="148" text-anchor="middle" font-size="12">words · image patches · audio frames</text>
+<rect class="s3" x="30" y="190" width="270" height="64" rx="10"/><text x="165" y="216" text-anchor="middle" font-size="14" font-weight="700">③ Map to numbers</text><text x="165" y="238" text-anchor="middle" font-size="12">every piece → an embedding, shared space</text>
+<rect class="s4" x="30" y="280" width="270" height="64" rx="10"/><text x="165" y="306" text-anchor="middle" font-size="14" font-weight="700">④ Attend</text><text x="165" y="328" text-anchor="middle" font-size="12">every piece looks at every other piece</text>
+<rect class="s5" x="30" y="370" width="270" height="64" rx="10"/><text x="165" y="396" text-anchor="middle" font-size="14" font-weight="700">⑤ Reply</text><text x="165" y="418" text-anchor="middle" font-size="12">the next token comes out (Day 1’s loop)</text>
+</svg>
+
+<h2>3 · Analogies</h2>
+<div class="grid">
+<div class="box ana"><b>Q, K, V = library.</b> <b>Query</b> is what you ask the librarian. <b>Key</b> is the label on each book’s spine. <b>Value</b> is what’s inside the book. You match your question to the labels, then read mostly the best-matching books and blend what they say.</div>
+<div class="box ana"><b>Attention = WhatsApp group.</b> In “The cat sat on the mat because <i>it</i> was tired”, the word “it” scans every message and pays most attention to “cat”.</div>
+</div>
+
+<h2>4 · Definitions</h2>
+<div class="grid">
+<div class="box def"><b>Modality</b><br>A type of input: text, image, audio, video.</div>
+<div class="box def"><b>Patch</b><br>A small square tile of an image. Each patch becomes one token.</div>
+<div class="box def"><b>Attention</b><br>Each token gathers information from the other tokens, weighted by relevance.</div>
+<div class="box def"><b>Query / Key / Value</b><br>Three vectors per token: what it looks for, how it can be found, what it hands over.</div>
+<div class="box def"><b>Attention weights</b><br>Probabilities (summing to 1) saying how much a token listens to each other token.</div>
+<div class="box def"><b>Multi-head</b><br>Several attentions in parallel, each free to focus on a different relationship.</div>
+</div>
+
+<h2>⚡ Try it live: attention explorer</h2>
+<div class="demo" id="att"><b>Attention explorer</b> <span class="mut">(hand-made, illustrative weights)</span><p id="aw" style="line-height:2.4"></p><div id="ab"></div><p class="mut" id="an">Tap “it”, “sat”, “tired” or “because” and see who each word listens to.</p></div>
+<div class="demo" id="pt"><b>Image → tokens</b> <label>Image width = height: <input id="pr" type="range" min="224" max="1344" step="112" value="224"> <b id="pv"></b></label><p id="po"></p></div>
+<script>addEventListener('DOMContentLoaded',()=>{const $=ML.$;
+const WD=['The','cat','sat','on','the','mat','because','it','was','tired'],W={it:[.03,.55,.02,.01,.02,.10,.02,0,.05,.20],sat:[.04,.56,0,.10,.02,.20,.02,0,.02,.04],tired:[.02,.40,.03,0,0,.05,.05,.35,.10,0],because:[.02,.25,.30,.03,0,.10,0,.20,.05,.05]};
+const draw=s=>{$('#aw').innerHTML=WD.map((w,i)=>{const k=W[w.toLowerCase()]?w.toLowerCase():null;const wt=s&&W[s]?W[s][i]:0;return '<button class="mini" data-w="'+(k||'')+'" style="margin:2px;background:hsla(265,80%,60%,'+Math.min(.9,wt*1.3)+');'+(s===w?'outline:2px solid var(--defb)':'')+'">'+w+'</button>'}).join(' ');
+ $('#ab').innerHTML=s&&W[s]?WD.map((w,i)=>[w,W[s][i]]).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>'<div class="br"><span>'+x[0]+'</span><div><i style="width:'+x[1]*100+'%"></i></div><em>'+Math.round(x[1]*100)+'%</em></div>').join(''):''};
+$('#aw').onclick=e=>{const k=e.target.dataset.w;if(k){draw(k);$('#an').textContent='“'+k+'” listens mostly to the highest bars.';ML.award('att-d3',3,'Attention explored')}};draw('');
+const pr=$('#pr'),up=()=>{const r=+pr.value,g=r/16,t=g*g;$('#pv').textContent=r+' px';$('#po').textContent=g+'×'+g+' grid = '+t.toLocaleString()+' patch tokens (16×16 patches, illustrative) · ~'+(t*t).toLocaleString()+' attention pairs · input cost ≈ $'+(t*2/1e6).toFixed(4)+' at $2/M'};
+pr.oninput=()=>{up();ML.award('pt-d3',3,'Patch counter used')};up()})</script>
+
+<h2>5 · The maths in three lines</h2>
+<div class="scroll"><table>
+<tr><th>Step</th><th>What it does</th><th>Formula</th></tr>
+<tr><td>Score</td><td>How well each Key matches the Query (scaled)</td><td><code>score = Q · K / √d</code></td></tr>
+<tr><td>Weights</td><td>Turn scores into probabilities</td><td><code>w = softmax(scores)</code></td></tr>
+<tr><td>Output</td><td>Blend the Values by those weights</td><td><code>out = Σ wᵢ · Vᵢ</code></td></tr>
+</table></div>
+
+<h2>6 · The “why?” ladder</h2>
+<div data-flash>
+<div class="box why"><b>Why can one model handle images and audio?</b><br>Everything is sliced into pieces and turned into numbers in a shared space. The layers don’t care where a token came from.</div>
+<div class="box why"><b>Why do we need attention at all?</b><br>Meaning depends on context. “It” must look at “cat” to mean anything. Attention lets each token pull in the relevant information from the others.</div>
+<div class="box why"><b>Why split into Query, Key and Value?</b><br>Different jobs. Query says what I need, Key says how I can be found, Value is the information handed over. Matching uses Q and K; the content comes from V.</div>
+<div class="box why"><b>Why divide the scores by √d?</b><br>Dot products grow with vector size. Without scaling, softmax saturates into near 0 or 1 and learning becomes hard. Scaling keeps it smooth.</div>
+<div class="box why"><b>Why do images cost so many tokens?</b><br>An image is a grid of patches and each patch is a token. Double the width and height and you get 4× the tokens; attention pairs grow with tokens².</div>
+</div>
+<div class="box warn"><b>Pitfalls:</b> assuming a model “sees” like a human (it works on patch tokens and can miss small text or exact counts) · treating attention weights as a full explanation of why it answered.</div>
+
+<h2>7 · Memory hooks</h2>
+<div class="box key"><b>Flow: SMAR</b> → “<b>S</b>harp <b>M</b>inds <b>A</b>lways <b>R</b>evise” = <b>S</b>lice, <b>M</b>ap to numbers, <b>A</b>ttend, <b>R</b>eply.<br><b>QKV:</b> you ask a <b>Q</b>uestion, match the <b>K</b>eyhole, open the <b>V</b>ault.</div>
+<div class="box ana" data-palace data-e="🎫,🚉,🚇,🔑,🚪"><b>Memory palace: a metro ride, 5 stops.</b>
+<ol><li><b>Ticket gate:</b> a photo, a voice note and a PDF go through the scanner and snap into tiles. <i>(Slice)</i></li>
+<li><b>Platform:</b> each tile turns into a glowing number badge. <i>(Map to numbers)</i></li>
+<li><b>Train door:</b> every passenger turns to stare at every other passenger, with light beams between them. <i>(Attend)</i></li>
+<li><b>Counter:</b> you shout a question, keyholes on every seat match, and one vault swings open. <i>(Q, K, V)</i></li>
+<li><b>Exit gate:</b> a single word lights up on the exit board. <i>(Reply)</i></li></ol></div>
+
+<h2>8 · Try it (15 min)</h2>
+<p>Upload one photo with some small text to a multimodal model and ask the three questions below. Fill in:</p>
+<div class="scroll"><table><tr><th>Question</th><th>Right?</th><th>What went wrong?</th></tr>
+<tr><td>Describe the image</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>Read the small text</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>Count the objects of one kind</td><td>&nbsp;</td><td>&nbsp;</td></tr></table></div>
+
+<h2>9 · Coding question: attention in pure Python</h2>
+<p class="mut">Medium · 20–25 min · skills: lists, comprehensions, <code>math</code>. <b>Attempt it first</b>, then the hint, then the solution.</p>
+<div class="box key"><b>Task.</b> Write <code>softmax(xs)</code> that turns a list of scores into probabilities that sum to 1. Then write <code>attention(q, K, V)</code> for one query: score each key as <code>dot(q, k) / sqrt(len(q))</code>, apply softmax, and return the weighted sum of the value rows.</div>
+<pre><code>q = [1, 0]
+K = [[1, 0], [0, 1], [1, 1]]
+V = [[10, 0], [0, 10], [5, 5]]
+
+# scores = [1, 0, 1] / sqrt(2) = [0.707, 0, 0.707]
+# weights = softmax(scores) = [0.401, 0.198, 0.401]
+attention(q, K, V)   # [6.017, 3.983]
+
+softmax([0, 0])      # [0.5, 0.5]</code></pre>
+<div data-run><script type="text/plain" class="starter">import math
+
+def softmax(xs):
+    pass
+
+def attention(q, K, V):
+    pass</script><script type="text/plain" class="tests">w = softmax([0, 0])
+assert all(abs(x - 0.5) < 1e-9 for x in w), "equal scores should give equal weights"
+assert abs(sum(softmax([1, 2, 3])) - 1) < 1e-9, "weights must sum to 1"
+out = attention([1, 0], [[1, 0], [0, 1], [1, 1]], [[10, 0], [0, 10], [5, 5]])
+assert abs(out[0] - 6.0167) < 0.01 and abs(out[1] - 3.9833) < 0.01, "expected about [6.017, 3.983]"</script></div>
+<details><summary>💡 Hint (open only after trying)</summary>Dot product: <code>sum(a * b for a, b in zip(q, k))</code>. For softmax, compute <code>math.exp(x)</code> for each score and divide by the total. The output’s j-th number is <code>sum(w[i] * V[i][j])</code> over all rows i.</details>
+<details><summary>✅ Solution + explanation (open after your attempt)</summary>
+<pre><code>import math
+
+def softmax(xs):
+    m = max(xs)
+    exps = [math.exp(x - m) for x in xs]
+    total = sum(exps)
+    return [e / total for e in exps]
+
+def attention(q, K, V):
+    d = len(q)
+    scores = [sum(a * b for a, b in zip(q, k)) / math.sqrt(d) for k in K]
+    w = softmax(scores)
+    return [sum(w[i] * V[i][j] for i in range(len(V))) for j in range(len(V[0]))]</code></pre>
+<b>How it works</b>
+<ol>
+<li><b>Dot product</b> measures how similar the Query is to each Key. Bigger means a better match.</li>
+<li><b>Divide by √d</b> keeps scores from growing with vector size, so softmax doesn’t saturate.</li>
+<li><b>softmax</b> turns scores into weights that sum to 1. Subtracting the max first avoids overflow in <code>exp</code> and doesn’t change the result.</li>
+<li><b>Weighted sum of Values:</b> keys that match get more say, so the output leans toward their values. Here keys 1 and 3 match best, so the output sits between <code>[10,0]</code> and <code>[5,5]</code>.</li>
+<li><b>Cost:</b> one query costs O(n·d) for n keys. Every token is a query, so all tokens cost O(n²·d). This is why long inputs and big images get slow and costly (Day 2).</li>
+</ol>
+<div class="box why"><b>What do real models add?</b> Learned matrices that create Q, K and V from each token, many heads in parallel, and batch matrix maths instead of Python loops.</div>
+</details>
+
+<h2>⚡ Quick quiz</h2>
+<div class="quiz" data-q='[{"q":"How can one model handle text and images?","o":["A separate model per input, glued together","Everything becomes tokens and numbers in a shared space","Images are always turned into text captions first","Images skip the layers"],"a":1,"e":"Pieces of any modality become embeddings and go through the same layers."},{"q":"In attention, what is the Key?","o":["The final answer","A label that Queries are matched against","The temperature setting","A token counter"],"a":1,"e":"Query is matched against Keys; the content comes from the Values."},{"q":"Why divide scores by √d?","o":["To speed up the code","To keep softmax from saturating","To make weights negative","To reduce parameters"],"a":1,"e":"Large dot products would push softmax to near 0 or 1."},{"q":"Image width and height both double. Patch tokens become about…","o":["2×","4×","8×","unchanged"],"a":1,"e":"Tokens = (width ÷ patch) × (height ÷ patch), so doubling both gives 4×."}]'></div>
+
+<h2>10 · Outcome check (say it aloud)</h2>
+<p><b>Explain Query, Key and Value using the library example, and say why a high-resolution image costs so many tokens.</b></p>
+<details><summary>Model answer</summary>The Query is your question, the Keys are the labels on the books, the Values are the books’ contents. You match the question to the labels, then blend the contents of the best matches. A high-resolution image is cut into a grid of patches and every patch is a token, so more pixels means many more tokens, and attention work grows with the square of the token count.</details>
+<div data-teach data-prompt="Explain to someone, or to a mirror, how a model reads an image and how attention picks what matters."></div>
+
+<h2>11 · Spaced revision</h2>
+<div data-rev></div>
+<div class="box key recap"><b>⭐ Recap: top 3 again</b><ol><li>Every modality becomes tokens, numbers, shared layers.</li><li>Query matches Keys, then blends Values.</li><li>Image = patch tokens; attention work grows with tokens².</li></ol></div>
+<p class="mut">Tomorrow (Day 4): controlling output with temperature, top-k, top-p and reasoning models.</p>
+<div class="nav"><a href="../day-002-tokens-context-cost-latency/">← Day 2</a><span class="mut">Day 4 → (not written yet)</span></div>
+</main></body></html>
