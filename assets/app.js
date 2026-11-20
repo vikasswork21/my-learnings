@@ -78,6 +78,13 @@ $$('[data-run]').forEach(w=>{
    out.textContent=L.join('\n');if(L.join('').includes('✅'))award(key,15,'Solved it!')}
   catch(err){out.textContent='⚠️ '+String(err).split('\n').slice(-3).join('\n')}}});
 
+if(P!=='home'&&location.protocol!=='file:'){fetch('../').then(r=>r.text()).then(t=>{
+ const d=new DOMParser().parseFromString(t,'text/html'),base=new URL('../',location.href),cur=location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'');
+ const L=[...d.querySelectorAll('.days a')].map(a=>({u:new URL(a.getAttribute('href'),base).href,n:parseInt((a.querySelector('b')||{}).textContent.replace(/\D/g,''),10)}));
+ const i=L.findIndex(x=>x.u===cur),navs=$$('.nav'),bot=navs[navs.length-1];if(i<0||!bot||navs.length<2)return;
+ const pv=L[i-1],nx=L[i+1];
+ bot.innerHTML=(pv?'<a href="'+pv.u+'">← Day '+pv.n+'</a>':'<span></span>')+(nx?'<a href="'+nx.u+'">Next: Day '+nx.n+' →</a>':'<span class="mut">Next day coming soon</span>')}).catch(()=>{})}
+
 if(P!=='home'){const lg=$('.legend');
  const st=el('<div class="st"><b>Before you start</b> <span class="en"><button data-e="😴">😴</button><button data-e="🙂">🙂</button><button data-e="🔥">🔥</button></span><div class="ck"><label><input type="checkbox">📵 Phone away</label><label><input type="checkbox">💧 Water ready</label><label><input type="checkbox">🌿 Study scent on</label></div></div>');
  st.onclick=e=>{const b=e.target.closest('[data-e]');if(b){$$('[data-e]',st).forEach(x=>x.classList.toggle('on',x===b));award('state-'+P,3,'Energy set')}

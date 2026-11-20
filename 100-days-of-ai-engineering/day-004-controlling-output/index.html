@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day 4 · Controlling Output</title>
+<link rel="stylesheet" href="../../assets/style.css"><script defer src="../../assets/app.js"></script></head><body data-day="d4" data-date="2026-11-20"><main>
+<div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
+
+<p class="tag">AI Engineer Prep · Day 4 of 100 · Fri 20 Nov 2026</p>
+<h1>Controlling Output: Temperature, Top-k, Top-p and Reasoning Models</h1>
+<p class="mut">Unit 1.4 · how you steer which token gets picked, and when a model should “think” first. Today’s DSA: hash maps (Counter): frequency, group anagrams.</p>
+<div class="legend"><span style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
+
+<div class="box key recap"><b>⭐ Top 3 to remember</b><ol><li>Scores → ÷ temperature → softmax → trim (top-k / top-p) → sample one token.</li><li>Low temperature = predictable (extraction, code). High = varied (creative). Tune temperature or top-p, not both.</li><li>Reasoning models think first: better on multi-step problems, but cost more tokens and time.</li></ol></div>
+
+<h2>0 · Warm-up (5 min)</h2>
+<div class="box why">Close everything. Redraw Day 3’s attention flow (Slice, Map, Attend, Reply) and say SMAR. Then Day 2’s TCCL. Peek only when stuck.</div>
+
+<h2>1 · The gist</h2>
+<div class="box key">At every step the model produces a <mark>probability for each possible next token</mark>. Settings like <mark>temperature</mark>, <mark>top-k</mark> and <mark>top-p</mark> decide how that list is reshaped and trimmed before one token is picked.</div>
+<div class="scroll"><table>
+<tr><th>✍️ Capture</th><th>💭 Create (your words)</th></tr>
+<tr><td>Temperature sharpens or flattens the probabilities. Top-k and top-p cut the long tail.</td><td>A task where I want the same answer every time: ________</td></tr>
+<tr><td>Reasoning models write hidden “thinking” tokens before the answer.</td><td>A task at work that needs step-by-step thinking: ________</td></tr>
+</table></div>
+
+<h2>2 · The picture to remember</h2>
+<svg data-steps viewBox="0 0 370 470" role="img" aria-label="Flowchart: scores, divide by temperature, softmax, trim with top-k and top-p, sample one token">
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="currentColor"/></marker></defs>
+<g stroke="currentColor" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M165 74V98"/><path d="M165 164V188"/><path d="M165 254V278"/><path d="M165 344V368"/></g>
+<rect class="s1" x="30" y="10" width="270" height="64" rx="10"/><text x="165" y="36" text-anchor="middle" font-size="14" font-weight="700">① Scores (logits)</text><text x="165" y="58" text-anchor="middle" font-size="12">one raw score per possible token</text>
+<rect class="s2" x="30" y="100" width="270" height="64" rx="10"/><text x="165" y="126" text-anchor="middle" font-size="14" font-weight="700">② ÷ temperature</text><text x="165" y="148" text-anchor="middle" font-size="12">low = sharper gaps · high = flatter</text>
+<rect class="s3" x="30" y="190" width="270" height="64" rx="10"/><text x="165" y="216" text-anchor="middle" font-size="14" font-weight="700">③ softmax</text><text x="165" y="238" text-anchor="middle" font-size="12">scores → probabilities (sum to 100%)</text>
+<rect class="s4" x="30" y="280" width="270" height="64" rx="10"/><text x="165" y="306" text-anchor="middle" font-size="14" font-weight="700">④ Trim: top-k / top-p</text><text x="165" y="328" text-anchor="middle" font-size="12">drop unlikely tokens, renormalise</text>
+<rect class="s5" x="30" y="370" width="270" height="64" rx="10"/><text x="165" y="396" text-anchor="middle" font-size="14" font-weight="700">⑤ Sample one token</text><text x="165" y="418" text-anchor="middle" font-size="12">append it, repeat (Day 1’s loop)</text>
+</svg>
+
+<h2>3 · Analogies</h2>
+<div class="grid">
+<div class="box ana"><b>Temperature = how adventurous you order.</b> Low: always your usual biryani. High: you point at random dishes on the menu.</div>
+<div class="box ana"><b>Top-k = a fixed short menu.</b> Only the 3 most popular dishes are offered, however many the kitchen can make.</div>
+<div class="box ana"><b>Top-p = the menu covering 90% of orders.</b> If everyone orders biryani, the menu is tiny. If tastes are scattered, it grows.</div>
+<div class="box ana"><b>Reasoning model = a student showing rough work.</b> It writes steps on the side before giving the final answer.</div>
+</div>
+
+<h2>4 · Definitions</h2>
+<div class="grid">
+<div class="box def"><b>Logits</b><br>The raw scores the model gives every token before they become probabilities.</div>
+<div class="box def"><b>Temperature</b><br>A number that divides the logits. Below 1 sharpens, above 1 flattens. 0 means always pick the top token.</div>
+<div class="box def"><b>Greedy decoding</b><br>Always take the single most likely token (temperature 0).</div>
+<div class="box def"><b>Top-k</b><br>Keep only the k most likely tokens, then renormalise and sample.</div>
+<div class="box def"><b>Top-p (nucleus)</b><br>Keep the smallest set of top tokens whose probabilities add up to at least p.</div>
+<div class="box def"><b>Penalties</b><br>Frequency and presence penalties discourage repeating tokens already used.</div>
+<div class="box def"><b>Reasoning tokens</b><br>Hidden “thinking” tokens a reasoning model writes first. Usually billed as output tokens.</div>
+</div>
+
+<h2>⚡ Try it live: temperature, top-k and top-p</h2>
+<div class="demo" id="tp"><b>Playground</b> <span class="mut">(made-up scores for “The famous Hyderabadi …”)</span><br>
+<label>Temperature <input id="tT" type="range" min="0.1" max="2" step="0.1" value="1"> <b id="vT">1.0</b></label><br>
+<label>top-k <input id="tK" type="range" min="1" max="6" step="1" value="6"> <b id="vK">6</b></label><br>
+<label>top-p <input id="tP" type="range" min="0.1" max="1" step="0.05" value="1"> <b id="vP">1.00</b></label>
+<div id="tb"></div><div class="ctl"><button id="t20">Sample ×20</button><button id="t0">Reset tally</button></div><p id="tn" class="mut"></p></div>
+<script>addEventListener('DOMContentLoaded',()=>{const $=ML.$,N=['biryani','haleem','kebab','chai','dum','bicycle'],LG=[3,1.4,.7,.2,0,-1];let tally=N.map(()=>0),tot=0,pr=[],kept=[];
+const calc=()=>{const T=+$('#tT').value,k=+$('#tK').value,p=+$('#tP').value,s=LG.map(x=>x/T),m=Math.max(...s),e=s.map(x=>Math.exp(x-m)),z=e.reduce((a,b)=>a+b),q=e.map(x=>x/z),o=q.map((_,i)=>i).sort((a,b)=>q[b]-q[a]),top=new Set(o.slice(0,k)),nuc=new Set();let c=0;for(const i of o){nuc.add(i);c+=q[i];if(c>=p-1e-9)break}
+ kept=o.filter(i=>top.has(i)&&nuc.has(i));const kz=kept.reduce((a,i)=>a+q[i],0);pr=q.map((x,i)=>kept.includes(i)?x/kz:0)};
+const draw=()=>{calc();$('#vT').textContent=(+$('#tT').value).toFixed(1);$('#vK').textContent=$('#tK').value;$('#vP').textContent=(+$('#tP').value).toFixed(2);
+ $('#tb').innerHTML=N.map((n,i)=>'<div class="br"><span>'+n+'</span><div><i style="width:'+pr[i]*100+'%"></i></div><em>'+Math.round(pr[i]*100)+'%</em></div>').join('');
+ $('#tn').textContent='Tokens still in the running: '+kept.length+(tot?' · picks so far: '+N.map((n,i)=>tally[i]?n+' '+tally[i]:'').filter(Boolean).join(', '):'')};
+['#tT','#tK','#tP'].forEach(s=>$(s).oninput=()=>{tally=N.map(()=>0);tot=0;draw();ML.award('tp-d4',3,'Playground used')});
+$('#t20').onclick=()=>{for(let n=0;n<20;n++){let r=Math.random(),i=0;while(i<pr.length-1&&r>pr[i]){r-=pr[i];i++}tally[i]++;tot++}draw();ML.award('tp-d4',3,'Playground used')};
+$('#t0').onclick=()=>{tally=N.map(()=>0);tot=0;draw()};draw()})</script>
+
+<h2>5 · Which setting for which job?</h2>
+<div class="scroll"><table>
+<tr><th>Task</th><th>Temperature</th><th>Why</th></tr>
+<tr><td>Data extraction, JSON, classification</td><td>0 to 0.3</td><td>You want the same, predictable answer</td></tr>
+<tr><td>Code, factual Q&amp;A</td><td>0 to 0.4</td><td>Fewer random slips</td></tr>
+<tr><td>Chat, summaries</td><td>0.5 to 0.8</td><td>Natural but stable</td></tr>
+<tr><td>Brainstorming, creative writing</td><td>0.8 to 1.2</td><td>You want variety</td></tr>
+</table></div>
+<p class="mut">Rules of thumb, not laws. Change one knob at a time, and check your provider’s docs: some reasoning models fix or limit temperature.</p>
+
+<h2>6 · Normal model vs reasoning model</h2>
+<div class="scroll"><table>
+<tr><th></th><th>Normal</th><th>Reasoning</th></tr>
+<tr><td>Behaviour</td><td>Answers straight away</td><td>Writes thinking tokens first, then answers</td></tr>
+<tr><td>Best for</td><td>Lookups, rewriting, simple classification</td><td>Maths, code, multi-step planning</td></tr>
+<tr><td>Cost and speed</td><td>Cheaper, faster</td><td>More output tokens, slower (Day 2)</td></tr>
+<tr><td>Control</td><td>Temperature, top-p</td><td>Often a reasoning effort or budget setting</td></tr>
+</table></div>
+
+<h2>7 · The “why?” ladder</h2>
+<div data-flash>
+<div class="box why"><b>Why does dividing by temperature change randomness?</b><br>Dividing shrinks the gaps between scores when T is above 1 and stretches them when T is below 1. Softmax then turns small gaps into flat odds and big gaps into a clear winner.</div>
+<div class="box why"><b>Why not always use temperature 0?</b><br>It gives the most predictable output but can be dull and repetitive, and it still doesn’t guarantee identical results every run. For creative or varied tasks you want some randomness.</div>
+<div class="box why"><b>Why top-p instead of top-k?</b><br>k is fixed whether the model is sure or confused. p adapts: few tokens survive when the model is confident, many when it isn’t.</div>
+<div class="box why"><b>Why does thinking first help?</b><br>Every token written becomes input for the next one (Day 1’s loop). Writing intermediate steps gives the model a scratchpad and more computation before it commits to an answer.</div>
+<div class="box why"><b>Why do reasoning models cost more?</b><br>The hidden thinking tokens are generated one by one and usually billed as output tokens, so you pay for them and wait for them.</div>
+</div>
+<div class="box warn"><b>Pitfalls:</b> lowering temperature to “fix hallucinations” (it only makes the same wrong answer consistent) · changing temperature and top-p together · using a reasoning model for a simple lookup.</div>
+
+<h2>8 · Memory hooks</h2>
+<div class="box key"><b>Dial order: TKP</b> → “<b>T</b>iny <b>K</b>ebabs, <b>P</b>lease!” = <b>T</b>emperature, top-<b>K</b>, top-<b>P</b>, then pick. For reasoning: “show your work”.</div>
+<div class="box ana" data-palace data-e="🌶️,📜,🧂,🎲,📝"><b>Memory palace: a restaurant, 5 stops.</b>
+<ol><li><b>Entrance:</b> a spice thermostat on the door. Far left: the same dish every time. Far right: chaos. <i>(Temperature)</i></li>
+<li><b>Menu stand:</b> the menu is cut down to the top 3 dishes. <i>(Top-k)</i></li>
+<li><b>Chef’s counter:</b> a chalk line keeps only the dishes that cover 90% of orders. <i>(Top-p)</i></li>
+<li><b>Kitchen:</b> the chef rolls a die weighted toward biryani to pick the dish. <i>(Sampling)</i></li>
+<li><b>Back office:</b> a student covers napkins with rough work before writing the final answer. <i>(Reasoning)</i></li></ol></div>
+
+<h2>9 · Try it (15 min)</h2>
+<p>In any LLM playground or API, send this prompt three times at each temperature and fill in: <i>“Give me one tagline for a biryani shop.”</i></p>
+<div class="scroll"><table><tr><th>Temperature</th><th>Same wording each time?</th><th>Which did you prefer?</th></tr>
+<tr><td>0</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>0.7</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+<tr><td>1.2</td><td>&nbsp;</td><td>&nbsp;</td></tr></table></div>
+
+<h2>10 · Coding question: build the sampler’s probabilities</h2>
+<p class="mut">Medium · 25 min · skills: lists, sorting, sets, <code>math</code>. <b>Attempt it first</b>, then the hint, then the solution.</p>
+<div class="box key"><b>Task.</b> Write <code>sample_probs(logits, temperature, top_k=None, top_p=None)</code> that returns the final probability for each token (same order as <code>logits</code>), with no randomness. Steps: 1) if <code>temperature == 0</code>, return a one-hot list on the highest logit. 2) divide logits by temperature and apply softmax. 3) if <code>top_k</code> is set, keep only the k most likely. 4) if <code>top_p</code> is set, keep the smallest top set whose probabilities add up to at least p (measured on the step-2 probabilities). 5) set removed tokens to 0 and renormalise the rest so they sum to 1.</div>
+<pre><code>logits = [2.0, 1.0, 0.0]
+
+sample_probs(logits, 1.0)             # [0.665, 0.245, 0.090]
+sample_probs(logits, 1.0, top_k=2)    # [0.731, 0.269, 0.0]
+sample_probs(logits, 1.0, top_p=0.6)  # [1.0, 0.0, 0.0]  (first token alone already covers 0.665)
+sample_probs(logits, 0.5)             # [0.867, 0.117, 0.016]  (sharper)
+sample_probs(logits, 0)               # [1.0, 0.0, 0.0]</code></pre>
+<div data-run><script type="text/plain" class="starter">import math
+
+def sample_probs(logits, temperature, top_k=None, top_p=None):
+    pass</script><script type="text/plain" class="tests">p = sample_probs([2.0, 1.0, 0.0], 1.0)
+assert abs(p[0] - 0.6652) < 1e-3 and abs(sum(p) - 1) < 1e-9, "plain softmax at T=1"
+p = sample_probs([2.0, 1.0, 0.0], 1.0, top_k=2)
+assert abs(p[0] - 0.7311) < 1e-3 and p[2] == 0, "top_k=2 keeps two tokens"
+p = sample_probs([2.0, 1.0, 0.0], 1.0, top_p=0.6)
+assert p == [1.0, 0.0, 0.0], "top_p=0.6 keeps only the first token"
+p = sample_probs([2.0, 1.0, 0.0], 0.5)
+assert abs(p[0] - 0.8668) < 1e-3, "lower temperature sharpens"
+p = sample_probs([2.0, 1.0, 0.0], 0)
+assert p == [1.0, 0.0, 0.0], "temperature 0 is one-hot"</script></div>
+<details><summary>💡 Hint (open only after trying)</summary>Get <code>order = sorted(range(n), key=lambda i: probs[i], reverse=True)</code>. Keep a set of indices to <code>keep</code>: start with everything, intersect with <code>order[:top_k]</code>, then walk <code>order</code> adding probabilities until the running total reaches <code>top_p</code> and intersect with that set. Finally divide each kept probability by the kept total.</details>
+<details><summary>✅ Solution + explanation (open after your attempt)</summary>
+<pre><code>import math
+
+def sample_probs(logits, temperature, top_k=None, top_p=None):
+    n = len(logits)
+    if temperature == 0:
+        i = logits.index(max(logits))
+        return [1.0 if j == i else 0.0 for j in range(n)]
+    scaled = [x / temperature for x in logits]
+    m = max(scaled)
+    exps = [math.exp(x - m) for x in scaled]
+    total = sum(exps)
+    probs = [e / total for e in exps]
+    order = sorted(range(n), key=lambda i: probs[i], reverse=True)
+    keep = set(order)
+    if top_k is not None:
+        keep &= set(order[:top_k])
+    if top_p is not None:
+        cum, nucleus = 0.0, set()
+        for i in order:
+            nucleus.add(i)
+            cum += probs[i]
+            if cum &gt;= top_p:
+                break
+        keep &amp;= nucleus
+    kept_total = sum(probs[i] for i in keep)
+    return [probs[i] / kept_total if i in keep else 0.0 for i in range(n)]</code></pre>
+<b>How it works</b>
+<ol>
+<li><b>Temperature 0</b> is a special case: dividing by zero is impossible, and the answer is simply the top token (greedy decoding).</li>
+<li><b>Divide by temperature, then softmax.</b> Subtracting the max first avoids overflow without changing the result.</li>
+<li><b>Sort indices by probability</b> so “top” means highest, while still remembering each token’s original position.</li>
+<li><b>Top-k</b> keeps the first k indices. <b>Top-p</b> adds tokens from the top until the running total reaches p, including the one that crosses the line, so at least one token always survives.</li>
+<li><b>Intersect the two sets</b> when both are given, then <b>renormalise</b> so the survivors sum to 1. Removed tokens get exactly 0 and can never be sampled.</li>
+<li><b>Cost:</b> sorting makes it O(n log n) in the vocabulary size. Real libraries do the same thing by setting removed logits to minus infinity.</li>
+</ol>
+<div class="box why"><b>How does this become one token?</b> Draw a random number and walk the probabilities until the running total passes it (the “Sample ×20” button above does exactly this).</div>
+</details>
+
+<h2>⚡ Quick quiz</h2>
+<div class="quiz" data-q='[{"q":"What does lowering the temperature do?","o":["Makes the model smarter","Sharpens the probabilities so output is more predictable","Increases max tokens","Adds web search"],"a":1,"e":"Dividing by a small T widens score gaps, so the top token dominates."},{"q":"What does top-p = 0.9 mean?","o":["Keep 90% of all tokens","Keep tokens with probability above 0.9","Keep the smallest set of top tokens whose probabilities add up to at least 0.9","Sample 90% of the time"],"a":2,"e":"It is the nucleus: the smallest top set reaching 90% total probability."},{"q":"Which setting suits extracting data into JSON?","o":["Temperature 1.5","Low temperature (0 to 0.3)","Top-k = 100","No limit on tokens"],"a":1,"e":"You want predictable, repeatable output."},{"q":"Why are reasoning models slower and pricier?","o":["They use a bigger window","They write extra thinking tokens before answering","They ignore the prompt","They always use temperature 2"],"a":1,"e":"Thinking tokens are generated one by one and usually billed as output."}]'></div>
+
+<h2>11 · Outcome check (say it aloud)</h2>
+<p><b>A teammate sets temperature to 0 “so the model stops hallucinating”. What is right and wrong about that, and what would you suggest instead?</b></p>
+<details><summary>Model answer</summary>Temperature 0 makes output more predictable, so the same answer comes back each time, but it doesn’t make facts true: a wrong answer just becomes consistently wrong, and even temperature 0 isn’t a guarantee of identical runs. To reduce hallucinations, ground the model with retrieved sources (RAG), ask it to cite them, and verify outputs. Keep low temperature for tasks like extraction where you want consistency.</details>
+<div data-teach data-prompt="Explain to someone, or to a mirror, what temperature, top-k and top-p do and when you would use a reasoning model."></div>
+
+<h2>12 · Spaced revision</h2>
+<div data-rev></div>
+<div class="box key recap"><b>⭐ Recap: top 3 again</b><ol><li>Scores, ÷ temperature, softmax, trim, sample.</li><li>Low temperature for predictable tasks, high for variety; tune one knob at a time.</li><li>Reasoning models think first: better for multi-step problems, costlier and slower.</li></ol></div>
+<p class="mut">Tomorrow (Day 5, Saturday) is a project day: set up your portfolio repo and build an LLM playground (token counter + cost calculator).</p>
+<div class="nav"><a href="../day-003-multimodal-and-attention/">← Day 3</a><span class="mut">Next day coming soon</span></div>
+</main></body></html>
