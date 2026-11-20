@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Day 2 · Tokens, Context Window, Cost and Latency</title>
-<link rel="stylesheet" href="../../assets/style.css"></head><body><main>
+<link rel="stylesheet" href="../../assets/style.css"><script defer src="../../assets/app.js"></script></head><body data-day="d2" data-date="2026-11-18"><main>
 <div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
 
 <p class="tag">AI Engineer Prep · Day 2 of 100 · Wed 18 Nov 2026</p>
@@ -10,6 +10,7 @@
 <p class="mut">Unit 1.2 · the four numbers behind every LLM call. Today’s DSA: arrays, traversal, prefix sums.</p>
 <div class="legend"><span style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
 
+<div class="box key recap"><b>⭐ Top 3 to remember</b><ol><li>Token ≈ 4 characters. Tokens set what fits, what you pay and how long you wait.</li><li>Input + output share one window; chats resend the whole history each turn.</li><li>Cost = in × price + out × price. Wait = first-token time + output ÷ speed.</li></ol></div>
 <h2>0 · Warm-up (5 min, before new material)</h2>
 <div class="box why">Close everything. Redraw Day 1’s 6-box flowchart and say the TTNLP acronym aloud. Then peek. Two minutes of struggling now is worth more than a re-read.</div>
 
@@ -22,10 +23,10 @@
 </table></div>
 
 <h2>2 · The picture to remember</h2>
-<svg viewBox="0 0 360 350" role="img" aria-label="A vertical bar showing the context window split into system prompt, chat history, retrieved documents, your question and room for the answer">
+<svg data-steps viewBox="0 0 360 350" role="img" aria-label="A vertical bar showing the context window split into system prompt, chat history, retrieved documents, your question and room for the answer">
 <rect class="s1" x="20" y="10" width="150" height="40"/><rect class="s2" x="20" y="50" width="150" height="110"/><rect class="s3" x="20" y="160" width="150" height="70"/><rect class="s4" x="20" y="230" width="150" height="30"/><rect class="s5" x="20" y="260" width="150" height="50"/>
 <g font-size="13" font-weight="700"><text x="185" y="35">System prompt</text><text x="185" y="110">Chat history</text><text x="185" y="198">Retrieved docs (RAG)</text><text x="185" y="250">Your question</text><text x="185" y="290">Room for the answer</text></g>
-<g font-size="11"><text x="185" y="50">rules + role, sent every call</text><text x="185" y="126">resent in full on every turn</text><text x="185" y="214">pasted-in knowledge</text><text x="185" y="287" dy="14">reserved output budget</text></g>
+<g font-size="11"><text x="185" y="46">rules + role, sent every call</text><text x="185" y="126">resent in full on every turn</text><text x="185" y="214">pasted-in knowledge</text><text x="185" y="287" dy="14">reserved output budget</text></g>
 <text x="95" y="335" text-anchor="middle" font-size="12">Everything must fit: input + output ≤ window limit</text>
 </svg>
 
@@ -55,11 +56,13 @@
 </table></div>
 
 <h2>6 · The “why?” ladder</h2>
+<div data-flash>
 <div class="box why"><b>Why tokens and not words or letters?</b><br>A fixed vocabulary of reusable chunks handles any word, typo or new name, while keeping sequences much shorter than letters would.</div>
 <div class="box why"><b>Why do Hindi or Telugu text cost more than English?</b><br>Tokenizers are trained mostly on English text, so other scripts are split into more, smaller pieces. Same meaning, more tokens, more cost, less room.</div>
 <div class="box why"><b>Why is output pricier than input?</b><br>Input tokens are processed together in parallel. Output tokens come one at a time: each needs a full pass through the model (Day 1’s loop).</div>
 <div class="box why"><b>Why do long chats get slower and costlier?</b><br>The model has no memory between calls. The app resends the whole history every turn, so input tokens grow every turn.</div>
 <div class="box why"><b>Why not stuff everything into the window?</b><br>It costs more, starts later, and facts buried in the middle of a huge input are used less reliably. Picking only the relevant pieces is the idea behind RAG (Phase 2).</div>
+</div>
 <div class="box warn"><b>Pitfalls:</b> assuming characters ≈ tokens · forgetting the answer shares the window · setting <code>max_tokens</code> so low that answers get cut off.</div>
 
 <h2>7 · Levers you control</h2>
@@ -72,7 +75,7 @@
 
 <h2>8 · Memory hooks</h2>
 <div class="box key"><b>Acronym: TCCL</b> → “<b>T</b>ea <b>C</b>ups <b>C</b>ost <b>L</b>ittle” = <b>T</b>okens, <b>C</b>ontext, <b>C</b>ost, <b>L</b>atency.</div>
-<div class="box ana"><b>Memory palace: your study room, 4 stops.</b>
+<div class="box ana" data-palace data-e="🔠,📋,🛺,⏳"><b>Memory palace: your study room, 4 stops.</b>
 <ol><li><b>Door:</b> Scrabble tiles spill out, each tile a chunk of a word. <i>(Tokens)</i></li>
 <li><b>Wall:</b> a whiteboard so full that the top lines are being rubbed off. <i>(Context window)</i></li>
 <li><b>Desk:</b> an auto meter ticking up for every tile you read and a faster tick for every tile you write. <i>(Cost)</i></li>
@@ -85,6 +88,12 @@
 <tr><td>The same sentence in Hindi or Telugu</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
 <tr><td>A 3-line Python function</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr></table></div>
 
+<h2>⚡ Try it live: chat growth and token meter</h2>
+<div class="demo" id="sim"><b>Chat growth simulator</b> <span class="mut">(illustrative: window 8,000 · system 500 · 300 per turn · answer 500 · $2/M in, $8/M out)</span><br><label>Turns so far: <input id="tn" type="range" min="1" max="40" value="5"> <b id="tv">5</b></label><div class="meter"><i id="mf"></i></div><p id="ms"></p>
+<hr><b>Token meter</b> <span class="mut">(rough: 1 token ≈ 4 characters)</span><textarea id="tx" rows="2" placeholder="Type or paste text…"></textarea><p id="tk" class="mut"></p></div>
+<script>addEventListener('DOMContentLoaded',()=>{const $=ML.$,tn=$('#tn'),f=$('#mf');const up=()=>{const t=+tn.value,i=500+t*300,tot=i+500;$('#tv').textContent=t;f.style.width=Math.min(100,tot/80)+'%';f.classList.toggle('over',tot>8000);$('#ms').textContent='Input '+i+' tokens · cost per call $'+(i*2/1e6+500*8/1e6).toFixed(4)+' · '+(tot>8000?'⚠️ Overflow: oldest turns must be trimmed':'fits ✓ ('+(8000-tot)+' tokens left)')};
+tn.oninput=()=>{up();ML.award('sim-d2',3,'Simulator used')};up();
+$('#tx').oninput=e=>{const n=Math.ceil(e.target.value.length/4);$('#tk').textContent=e.target.value.length+' characters ≈ '+n+' tokens';ML.award('meter-d2',3,'Token meter used')}})</script>
 <h2>10 · Coding question: trim chat history to fit the window</h2>
 <p class="mut">Easy–medium · 15–20 min · skills: lists, loops, reverse traversal. <b>Attempt it first</b>, then the hint, then the solution.</p>
 <div class="box key"><b>Task.</b> <code>messages</code> is a list of dicts with <code>role</code> and <code>tokens</code>. <code>messages[0]</code> is the system message and must always stay. Write <code>trim_history(messages, limit, reserve_output)</code> that keeps the system message plus the <b>most recent</b> messages that fit in <code>limit - reserve_output</code> tokens, returned in original order. Stop at the first message that doesn’t fit (no gaps). If the system message alone is too big, raise <code>ValueError</code>.</div>
@@ -102,6 +111,15 @@ trim_history(messages, 800, 200)
 # the assistant(300) message would not fit, so it and everything older is dropped
 
 trim_history(messages, 100, 60)   # budget 40 &lt; system 50 -> ValueError</code></pre>
+<div data-run><script type="text/plain" class="starter">def trim_history(messages, limit, reserve_output):
+    pass</script><script type="text/plain" class="tests">msgs = [{"role":"system","tokens":50},{"role":"user","tokens":200},{"role":"assistant","tokens":300},{"role":"user","tokens":100},{"role":"assistant","tokens":250},{"role":"user","tokens":80}]
+r = trim_history(msgs, 800, 200)
+assert [x["tokens"] for x in r] == [50,100,250,80], "expected tokens [50,100,250,80]"
+try:
+    trim_history(msgs, 100, 60)
+    assert False, "should raise ValueError when the system message is too big"
+except ValueError:
+    pass</script></div>
 <details><summary>💡 Hint (open only after trying)</summary>Subtract the system message from the budget first. Then walk the remaining messages from newest to oldest, keeping a running “tokens left”. When one doesn’t fit, <code>break</code>. Reverse the kept list at the end.</details>
 <details><summary>✅ Solution + explanation (open after your attempt)</summary>
 <pre><code>def trim_history(messages, limit, reserve_output):
@@ -128,10 +146,13 @@ trim_history(messages, 100, 60)   # budget 40 &lt; system 50 -> ValueError</code
 <div class="box why"><b>What would a real app do differently?</b> Count tokens with the model’s tokenizer instead of trusting stored numbers, and <i>summarise</i> the dropped part instead of deleting it, so key facts survive.</div>
 </details>
 
+<h2>⚡ Quick quiz</h2>
+<div class="quiz" data-q='[{"q": "Roughly how many English characters make one token?", "o": ["1", "4", "10", "25"], "a": 1, "e": "About 4 characters, or ¾ of a word."}, {"q": "Why does a long chat cost more on every turn?", "o": ["The model gets tired", "The app resends the whole history each turn", "Tokens get more expensive", "Output tokens double each turn"], "a": 1, "e": "The model has no memory between calls, so history is resent."}, {"q": "What must fit inside the context window?", "o": ["Input only", "Output only", "Input plus output", "Neither"], "a": 2, "e": "Input and output share the same window."}, {"q": "First token after 0.5 s, then 400 tokens at 50 tokens/s. Total wait?", "o": ["0.5 s", "8 s", "8.5 s", "50.5 s"], "a": 2, "e": "0.5 + 400 ÷ 50 = 8.5 seconds."}]'></div>
 <h2>11 · Outcome check (say it aloud)</h2>
 <p><b>Your chatbot gets slower and more expensive the longer a conversation runs. Explain why and give two fixes.</b></p>
 <details><summary>Model answer</summary>The model has no memory, so the app resends the whole history on every turn. Input tokens, cost and time to first token all grow each turn, and eventually the window overflows. Fixes: trim old messages to a token budget, summarise older turns, or retrieve only relevant pieces instead of resending everything.</details>
 
+<div data-teach data-prompt="Explain to someone, or to a mirror, why a chatbot gets slower and pricier as the chat grows, and two ways to fix it."></div>
 <h2>12 · Spaced revision</h2>
 <div class="scroll"><table>
 <tr><th>When</th><th>Do this (active recall)</th></tr>
@@ -141,6 +162,8 @@ trim_history(messages, 100, 60)   # budget 40 &lt; system 50 -> ValueError</code
 <tr><td>Wed 25 Nov (Day 9)</td><td>Teach tokens, cost and latency to someone in 2 minutes.</td></tr>
 <tr><td>Wed 9 Dec (Day 23)</td><td>Redraw the diagram, recite TCCL, and redo the outcome answer.</td></tr>
 </table></div>
+<div data-rev></div>
+<div class="box key recap"><b>⭐ Recap: top 3 again</b><ol><li>Token ≈ 4 chars; fit, cost, latency.</li><li>Input + output share the window; history is resent.</li><li>Cost and wait formulas.</li></ol></div>
 <p class="mut">Tomorrow (Day 3): multimodal models and attention intuition (Q, K, V).</p>
-<div class="nav"><a href="../day-001-what-an-llm-does/">← Day 1</a><span class="mut">Next: Day 3 →</span></div>
+<div class="nav"><a href="../day-001-what-an-llm-does/">← Day 1</a><a href="../day-003-multimodal-and-attention/">Next: Day 3 →</a></div>
 </main></body></html>
