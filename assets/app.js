@@ -89,8 +89,9 @@ if(P!=='home'){const lg=$('.legend');
    if(rem<=0){clearInterval(iv);if(mode==='f'){award('focus-'+P,10,'Focus block done!');mode='b';rem=300;end=Date.now()+300000;brk.hidden=false;iv=setInterval(()=>{rem=Math.max(0,Math.ceil((end-Date.now())/1000));clk.textContent=fmt(rem);if(rem<=0)rs()},1000)}else rs()}},1000)}};
  lg.before(st);lg.before(tm)}
 
-if(P==='home'&&window.DAYS&&$('#dash')){const due=[];
- DAYS.forEach(D=>{const b=D.date.split('-').map(Number);[1,3,7,21].forEach((k,x)=>{const t=new Date(b[0],b[1]-1,b[2]+k);if(iso(t)<=today()&&!S.done['rev-'+D.id+'-'+x])due.push({D,k,late:iso(t)<today()})})});
+if(P==='home'&&window.DAYS&&$('#dash')){const due=[],by={};
+ DAYS.forEach(D=>{const b=D.date.split('-').map(Number);[1,3,7,21].forEach((k,x)=>{const t=new Date(b[0],b[1]-1,b[2]+k);if(iso(t)<=today()&&!S.done['rev-'+D.id+'-'+x]){const o={D,k,late:iso(t)<today()};due.push(o);(by[D.id]=by[D.id]||{D,r:[]}).r.push(o)}})});
+ const rows=Object.values(by);
  $('#dash').innerHTML='<h2>Today</h2><div class="stats"><div><b>'+S.xp+'</b><small>XP</small></div><div><b>'+streak()+'</b><small>day streak</small></div><div><b>'+DAYS.length+'/100</b><small>days written</small></div></div>'+
- (due.length?'<h3>🔁 Due for revision</h3><ul class="days">'+due.map(o=>'<li><a href="'+o.D.url+'#rev"><b>Day '+String(o.D.n).padStart(3,'0')+'</b> +'+o.k+' day review <em>'+(o.late?'overdue':'due today')+'</em></a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
+ (rows.length?'<h3>🔁 Due for revision</h3><ul class="days">'+rows.map(g=>'<li><a href="'+g.D.url+'#rev"><b>Day '+String(g.D.n).padStart(3,'0')+'</b> '+g.D.title+' <em>'+g.r.map(o=>'+'+o.k+(o.late?' overdue':' today')).join(' · ')+'</em></a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
 })();
