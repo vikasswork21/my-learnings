@@ -4,6 +4,7 @@ const K='ml-progress';let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}cat
 S.xp=S.xp||0;S.done=S.done||{};S.notes=S.notes||{};S.days=S.days||[];
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const P=document.body.dataset.day||'home';
+if(!$('link[rel~=icon]')){const cs=document.currentScript;if(cs&&cs.src){const l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href=new URL('favicon.svg',cs.src).href;document.head.append(l)}}
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const today=()=>iso(new Date());
 const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -93,5 +94,5 @@ if(P==='home'&&window.DAYS&&$('#dash')){const due=[],by={};
  DAYS.forEach(D=>{const b=D.date.split('-').map(Number);[1,3,7,21].forEach((k,x)=>{const t=new Date(b[0],b[1]-1,b[2]+k);if(iso(t)<=today()&&!S.done['rev-'+D.id+'-'+x]){const o={D,k,late:iso(t)<today()};due.push(o);(by[D.id]=by[D.id]||{D,r:[]}).r.push(o)}})});
  const rows=Object.values(by);
  $('#dash').innerHTML='<h2>Today</h2><div class="stats"><div><b>'+S.xp+'</b><small>XP</small></div><div><b>'+streak()+'</b><small>day streak</small></div><div><b>'+DAYS.length+'/100</b><small>days written</small></div></div>'+
- (rows.length?'<h3>🔁 Due for revision</h3><ul class="days">'+rows.map(g=>'<li><a href="'+g.D.url+'#rev"><b>Day '+String(g.D.n).padStart(3,'0')+'</b> '+g.D.title+' <em>'+g.r.map(o=>'+'+o.k+(o.late?' overdue':' today')).join(' · ')+'</em></a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
+ (rows.length?'<h3>🔁 Due for revision</h3><ul class="days">'+rows.map(g=>'<li><a href="'+g.D.url+'#rev"><b>Day '+String(g.D.n).padStart(3,'0')+'</b> '+g.D.title+'</a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
 })();
