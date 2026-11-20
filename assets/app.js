@@ -1,0 +1,96 @@
+(()=>{
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const K='ml-progress';let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
+S.xp=S.xp||0;S.done=S.done||{};S.notes=S.notes||{};S.days=S.days||[];
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const P=document.body.dataset.day||'home';
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date());
+const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const el=h=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
+function streak(){let n=0,d=new Date();const s=new Set(S.days);if(!s.has(iso(d)))d.setDate(d.getDate()-1);while(s.has(iso(d))){n++;d.setDate(d.getDate()-1)}return n}
+function hud(){const h=$('#hud');if(h)h.textContent='⚡ '+S.xp+' XP · 🔥 '+streak()+'-day streak'}
+function toast(m){const t=el('<div class="toast">'+m+'</div>');document.body.append(t);setTimeout(()=>t.remove(),2200)}
+function pop(){if(reduce)return;for(let i=0;i<36;i++){const c=el('<i class="cf"></i>');c.style.cssText='left:'+Math.random()*100+'vw;background:hsl('+Math.random()*360+',80%,60%);animation-delay:'+Math.random()*.3+'s';document.body.append(c);setTimeout(()=>c.remove(),2000)}}
+function award(k,p,m){if(S.done[k])return false;S.done[k]=1;S.xp+=p;const t=today();if(!S.days.includes(t))S.days.push(t);save();hud();toast('+'+p+' XP · '+(m||'Nice!'));if(p>=8)pop();return true}
+window.ML={$,$$,el,award,S,save};
+$('main').prepend(el('<div class="hud" id="hud"></div>'));hud();
+
+$$('svg[data-steps]').forEach(svg=>{
+ const R=$$('rect',svg),T=$$('text',svg),A=$$('g path',svg),N=R.length;
+ const b=R.map(r=>[+r.getAttribute('y'),+r.getAttribute('y')+ +r.getAttribute('height')]);
+ const own=T.map(t=>b.findIndex(([a,z])=>+t.getAttribute('y')>=a&&+t.getAttribute('y')<z));
+ let n=N,tm;
+ const ap=()=>{R.forEach((r,i)=>r.style.opacity=i<n?1:.12);T.forEach((t,j)=>t.style.opacity=own[j]<0||own[j]<n?1:.08);A.forEach((p,j)=>p.style.opacity=(j<N-1?j<n-1:n===N)?1:.1)};
+ const c=el('<div class="ctl"><button data-a="p">▶ Play step by step</button><button data-a="a">Show all</button></div>');svg.after(c);
+ c.onclick=e=>{const a=e.target.dataset.a;clearInterval(tm);if(a==='a'){n=N;ap()}if(a==='p'){if(reduce){n=N;ap();return}n=0;ap();tm=setInterval(()=>{n++;ap();if(n>=N){clearInterval(tm);award('anim-'+P,3,'Diagram watched')}},800)}}});
+
+$$('[data-palace]').forEach(box=>{
+ const ol=$('ol',box),L=$$('li',ol),E=(box.dataset.e||'').split(','),key='pal-'+P;let i=0;
+ const ui=el('<div class="pal"><div class="pe"></div><div class="pt"></div><div class="dots"></div><textarea rows="2" placeholder="Make it yours: type your own wilder image for this stop…"></textarea><div class="ctl"><button data-a="p">← Back</button><button data-a="n">Next →</button></div></div>');
+ ol.hidden=true;box.append(ui);const ta=$('textarea',ui);
+ const draw=()=>{const pe=$('.pe',ui);pe.textContent=E[i]||'📍';pe.classList.remove('pop');void pe.offsetWidth;pe.classList.add('pop');$('.pt',ui).innerHTML='<small>Stop '+(i+1)+' of '+L.length+'</small><br>'+L[i].innerHTML;$('.dots',ui).innerHTML=L.map((_,j)=>'<i class="'+(j===i?'on':'')+'"></i>').join('');ta.value=S.notes[key+i]||''};
+ ui.onclick=e=>{const a=e.target.dataset.a;if(a==='n'){if(i<L.length-1)i++;else award(key,10,'Palace walked!');draw()}if(a==='p'&&i>0){i--;draw()}};
+ ta.oninput=()=>{S.notes[key+i]=ta.value;save()};draw()});
+
+$$('[data-flash]').forEach(w=>{
+ const g=el('<div class="fl"></div>');
+ $$(':scope>.box.why',w).forEach((b,i)=>{
+  const q=$('b',b).innerHTML,a=b.innerHTML.split('<br>').slice(1).join('<br>');
+  const c=el('<div class="fc"><div class="fi"><div class="ff"><small>Tap to flip</small><br><b>'+q+'</b></div><div class="fb">'+a+'<br><button class="mini">✔ I recalled it</button></div></div></div>');
+  c.onclick=e=>{if(e.target.classList.contains('mini')){e.stopPropagation();award('fc-'+P+'-'+i,2,'Recalled!');e.target.textContent='✔ Saved';return}c.classList.toggle('flip')};
+  g.append(c);b.hidden=true});
+ const k=el('<div class="ctl"><button>Flip all</button></div>');k.onclick=()=>$$('.fc',g).forEach(c=>c.classList.toggle('flip'));
+ w.prepend(g);w.prepend(k)});
+
+$$('.quiz[data-q]').forEach(w=>{
+ const Q=JSON.parse(w.dataset.q);let i=0,sc=0,lock=false;
+ const draw=()=>{lock=false;if(i>=Q.length){w.innerHTML='<b>Score: '+sc+'/'+Q.length+'</b>';award('quiz-'+P,sc*3,'Quiz done');if(sc===Q.length)pop();return}
+  const q=Q[i];w.innerHTML='<p><b>Q'+(i+1)+'/'+Q.length+'.</b> '+q.q+'</p>'+q.o.map((o,j)=>'<button class="opt" data-j="'+j+'">'+o+'</button>').join('')+'<p class="fb2"></p>'};
+ w.onclick=e=>{if(e.target.classList.contains('nx')){i++;draw();return}
+  const b=e.target.closest('.opt');if(!b||lock)return;lock=true;const q=Q[i],j=+b.dataset.j;
+  $$('.opt',w).forEach((o,x)=>{if(x===q.a)o.classList.add('ok')});if(j===q.a)sc++;else b.classList.add('no');
+  $('.fb2',w).innerHTML=(j===q.a?'✅ ':'❌ ')+q.e+' <button class="mini nx">Next →</button>'};
+ draw()});
+
+$$('[data-teach]').forEach(w=>{const key='teach-'+P;
+ w.innerHTML='<b>🎤 Teach it (2 min)</b><p>'+w.dataset.prompt+'</p><textarea rows="3" placeholder="My one-line version…"></textarea><button>✔ I explained it aloud</button>';
+ const ta=$('textarea',w);ta.value=S.notes[key]||'';ta.oninput=()=>{S.notes[key]=ta.value;save()};$('button',w).onclick=()=>award(key,8,'Taught it!')});
+
+$$('[data-rev]').forEach(w=>{
+ const d=document.body.dataset.date.split('-').map(Number);w.id='rev';w.innerHTML='<b>🔁 Revision tracker</b>';
+ [1,3,7,21].forEach((k,x)=>{const t=new Date(d[0],d[1]-1,d[2]+k),key='rev-'+P+'-'+x;
+  const r=el('<label class="rv"><input type="checkbox"> <span>+'+k+' days · '+t.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})+'</span> <em></em></label>');
+  const cb=$('input',r),st=()=>{$('em',r).textContent=S.done[key]?'done ✓':iso(t)<today()?'overdue':iso(t)===today()?'due today':'upcoming'};
+  cb.checked=!!S.done[key];st();cb.onchange=()=>{if(cb.checked)award(key,5,'Revision done');else{delete S.done[key];save()}st()};w.append(r)})});
+
+let pyP;const getPy=()=>pyP||(pyP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';s.onload=()=>loadPyodide().then(res,rej);s.onerror=()=>rej(new Error('Could not load the Python runtime'));document.head.append(s)}));
+$$('[data-run]').forEach(w=>{
+ const st=$('.starter',w).textContent.trim(),ts=$('.tests',w).textContent.trim(),key='run-'+P;
+ w.insertAdjacentHTML('afterbegin','<b>🧪 Try it here (Python runs in your browser)</b><textarea class="code" spellcheck="false" rows="12"></textarea><div class="ctl"><button data-a="r">▶ Run my code</button><button data-a="x">Reset</button></div><pre class="out">Output appears here.</pre>');
+ const ta=$('.code',w),out=$('.out',w);ta.value=S.notes[key]||st;ta.oninput=()=>{S.notes[key]=ta.value;save()};
+ w.onclick=async e=>{const a=e.target.dataset.a;if(a==='x'){ta.value=st;S.notes[key]=st;save();out.textContent='Reset.'}if(a!=='r')return;
+  out.textContent='Loading Python (first time takes a few seconds)…';
+  try{const py=await getPy(),L=[];py.setStdout({batched:s=>L.push(s)});const ns=py.globals.get('dict')();
+   await py.runPythonAsync(ta.value,{globals:ns});
+   await py.runPythonAsync('try:\n'+ts.split('\n').map(l=>'    '+l).join('\n')+'\n    print("✅ All checks passed")\nexcept AssertionError as e:\n    print("❌ Check failed:",e)',{globals:ns});
+   out.textContent=L.join('\n');if(L.join('').includes('✅'))award(key,15,'Solved it!')}
+  catch(err){out.textContent='⚠️ '+String(err).split('\n').slice(-3).join('\n')}}});
+
+if(P!=='home'){const lg=$('.legend');
+ const st=el('<div class="st"><b>Before you start</b> <span class="en"><button data-e="😴">😴</button><button data-e="🙂">🙂</button><button data-e="🔥">🔥</button></span><div class="ck"><label><input type="checkbox">📵 Phone away</label><label><input type="checkbox">💧 Water ready</label><label><input type="checkbox">🌿 Study scent on</label></div></div>');
+ st.onclick=e=>{const b=e.target.closest('[data-e]');if(b){$$('[data-e]',st).forEach(x=>x.classList.toggle('on',x===b));award('state-'+P,3,'Energy set')}
+  if($$('input',st).every(x=>x.checked))award('prep-'+P,3,'Ready to study')};
+ const tm=el('<div class="tm"><b>⏱ Focus</b> <span class="clk">45:00</span> <button data-a="s">Start</button> <button data-a="r">Reset</button><div class="brk" hidden>🧍 Break: 💧 drink water · 👀 look far away · 🔀 cross-crawl <span class="cc">↔️</span></div></div>');
+ let mode='f',rem=2700,end=0,iv;const clk=$('.clk',tm),brk=$('.brk',tm),fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+ const rs=()=>{clearInterval(iv);mode='f';rem=2700;clk.textContent=fmt(rem);brk.hidden=true;$('[data-a=s]',tm).textContent='Start'};
+ tm.onclick=e=>{const a=e.target.dataset.a;if(a==='r')rs();if(a==='s'){clearInterval(iv);end=Date.now()+rem*1000;e.target.textContent='Running…';
+  iv=setInterval(()=>{rem=Math.max(0,Math.ceil((end-Date.now())/1000));clk.textContent=fmt(rem);
+   if(rem<=0){clearInterval(iv);if(mode==='f'){award('focus-'+P,10,'Focus block done!');mode='b';rem=300;end=Date.now()+300000;brk.hidden=false;iv=setInterval(()=>{rem=Math.max(0,Math.ceil((end-Date.now())/1000));clk.textContent=fmt(rem);if(rem<=0)rs()},1000)}else rs()}},1000)}};
+ lg.before(st);lg.before(tm)}
+
+if(P==='home'&&window.DAYS&&$('#dash')){const due=[];
+ DAYS.forEach(D=>{const b=D.date.split('-').map(Number);[1,3,7,21].forEach((k,x)=>{const t=new Date(b[0],b[1]-1,b[2]+k);if(iso(t)<=today()&&!S.done['rev-'+D.id+'-'+x])due.push({D,k,late:iso(t)<today()})})});
+ $('#dash').innerHTML='<h2>Today</h2><div class="stats"><div><b>'+S.xp+'</b><small>XP</small></div><div><b>'+streak()+'</b><small>day streak</small></div><div><b>'+DAYS.length+'/100</b><small>days written</small></div></div>'+
+ (due.length?'<h3>🔁 Due for revision</h3><ul class="days">'+due.map(o=>'<li><a href="'+o.D.url+'#rev"><b>Day '+String(o.D.n).padStart(3,'0')+'</b> +'+o.k+' day review <em>'+(o.late?'overdue':'due today')+'</em></a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
+})();
