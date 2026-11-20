@@ -13,6 +13,8 @@ assets/style.css, app.js, days.js  shared look and interactive components
   day-002-tokens-context-cost-latency/
   day-003-multimodal-and-attention/
   day-004-controlling-output/
+  day-005-project-llm-playground/   Saturdays: weekly recap + project
+  recap-month-1/                    month-end recap (auto-built from the notes)
 ```
 
 Each note: diagram, definitions, "why?" flip cards, analogy, memory palace, a coding question you can run in the browser, a quiz and a spaced-revision tracker.

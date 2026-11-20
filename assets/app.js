@@ -34,7 +34,7 @@ $$('[data-palace]').forEach(box=>{
  ui.onclick=e=>{const a=e.target.dataset.a;if(a==='n'){if(i<L.length-1)i++;else award(key,10,'Palace walked!');draw()}if(a==='p'&&i>0){i--;draw()}};
  ta.oninput=()=>{S.notes[key+i]=ta.value;save()};draw()});
 
-$$('[data-flash]').forEach(w=>{
+const flash=w=>{
  const g=el('<div class="fl"></div>');
  $$(':scope>.box.why',w).forEach((b,i)=>{
   const q=$('b',b).innerHTML,a=b.innerHTML.split('<br>').slice(1).join('<br>');
@@ -42,17 +42,18 @@ $$('[data-flash]').forEach(w=>{
   c.onclick=e=>{if(e.target.classList.contains('mini')){e.stopPropagation();award('fc-'+P+'-'+i,2,'Recalled!');e.target.textContent='✔ Saved';return}c.classList.toggle('flip')};
   g.append(c);b.hidden=true});
  const k=el('<div class="ctl"><button>Flip all</button></div>');k.onclick=()=>$$('.fc',g).forEach(c=>c.classList.toggle('flip'));
- w.prepend(g);w.prepend(k)});
+ w.prepend(g);w.prepend(k)};
+$$('[data-flash]').forEach(flash);
 
-$$('.quiz[data-q]').forEach(w=>{
- const Q=JSON.parse(w.dataset.q);let i=0,sc=0,lock=false;
- const draw=()=>{lock=false;if(i>=Q.length){w.innerHTML='<b>Score: '+sc+'/'+Q.length+'</b>';award('quiz-'+P,sc*3,'Quiz done');if(sc===Q.length)pop();return}
-  const q=Q[i];w.innerHTML='<p><b>Q'+(i+1)+'/'+Q.length+'.</b> '+q.q+'</p>'+q.o.map((o,j)=>'<button class="opt" data-j="'+j+'">'+o+'</button>').join('')+'<p class="fb2"></p>'};
+const quiz=(w,Q,key)=>{let i=0,sc=0,lock=false;const bad=new Set();
+ const draw=()=>{lock=false;if(i>=Q.length){w.innerHTML='<b>Score: '+sc+'/'+Q.length+'</b>'+(bad.size?'<p>Worth revisiting: '+[...bad].join(' · ')+'</p>':'<p>Clean sweep! 🎉</p>');award(key,sc*3,'Quiz done');if(sc===Q.length)pop();return}
+  const q=Q[i];w.innerHTML='<p><b>Q'+(i+1)+'/'+Q.length+'.</b> '+(q.d?'<small>'+q.d+'</small><br>':'')+q.q+'</p>'+q.o.map((o,j)=>'<button class="opt" data-j="'+j+'">'+o+'</button>').join('')+'<p class="fb2"></p>'};
  w.onclick=e=>{if(e.target.classList.contains('nx')){i++;draw();return}
   const b=e.target.closest('.opt');if(!b||lock)return;lock=true;const q=Q[i],j=+b.dataset.j;
-  $$('.opt',w).forEach((o,x)=>{if(x===q.a)o.classList.add('ok')});if(j===q.a)sc++;else b.classList.add('no');
+  $$('.opt',w).forEach((o,x)=>{if(x===q.a)o.classList.add('ok')});if(j===q.a)sc++;else{b.classList.add('no');if(q.d)bad.add(q.d)}
   $('.fb2',w).innerHTML=(j===q.a?'✅ ':'❌ ')+q.e+' <button class="mini nx">Next →</button>'};
- draw()});
+ draw()};
+$$('.quiz[data-q]').forEach(w=>quiz(w,JSON.parse(w.dataset.q),'quiz-'+P));
 
 $$('[data-teach]').forEach(w=>{const key='teach-'+P;
  w.innerHTML='<b>🎤 Teach it (2 min)</b><p>'+w.dataset.prompt+'</p><textarea rows="3" placeholder="My one-line version…"></textarea><button>✔ I explained it aloud</button>';
@@ -64,6 +65,27 @@ $$('[data-rev]').forEach(w=>{
   const r=el('<label class="rv"><input type="checkbox"> <span>+'+k+' days · '+t.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})+'</span> <em></em></label>');
   const cb=$('input',r),st=()=>{$('em',r).textContent=S.done[key]?'done ✓':iso(t)<today()?'overdue':iso(t)===today()?'due today':'upcoming'};
   cb.checked=!!S.done[key];st();cb.onchange=()=>{if(cb.checked)award(key,5,'Revision done');else{delete S.done[key];save()}st()};w.append(r)})});
+
+$$('[data-todo]').forEach(w=>{const L=$$('li',w);L.forEach((li,i)=>{const k='td-'+P+'-'+i,cb=el('<input type="checkbox"> ');cb.checked=!!S.done[k];
+ cb.onchange=()=>{if(cb.checked){S.done[k]=1;S.xp+=2;save();hud();toast('+2 XP · Step done');if(L.every((_,j)=>S.done['td-'+P+'-'+j]))award('tdall-'+P,15,'All steps done!')}else{delete S.done[k];save()}};li.prepend(cb)})});
+
+$$('[data-recap]').forEach(async w=>{
+ if(location.protocol==='file:'||!window.DAYS){w.textContent='Open this page from the published site to load the recap.';return}
+ const base=new URL('../../',location.href),ds=DAYS.filter(D=>D.date>=w.dataset.from&&D.date<=w.dataset.to);
+ w.innerHTML='<p class="mut">Loading your notes…</p>';let parts;
+ try{parts=await Promise.all(ds.map(D=>fetch(new URL(D.url,base)).then(r=>r.text()).then(t=>{const d=new DOMParser().parseFromString(t,'text/html'),rc=d.querySelector('.recap'),qz=d.querySelector('.quiz[data-q]');
+  return{D,u:new URL(D.url,base).href,top:rc?[...rc.querySelectorAll('li')].map(x=>x.innerHTML):[],Q:qz?JSON.parse(qz.dataset.q):[],W:[...d.querySelectorAll('[data-flash]>.box.why')].map(x=>x.outerHTML)}})))}
+ catch(e){w.textContent='Could not load the notes. Try again later.';return}
+ let h='<h3>📅 At a glance: recall first, then check</h3>';
+ parts.forEach(p=>{h+='<div class="box why"><b>Day '+p.D.n+' · '+p.D.title+'</b> <a class="mut" href="'+p.u+'">open notes</a><textarea rows="2" data-k="'+p.D.id+'" placeholder="From memory: the top 3 points…"></textarea><details data-d="'+p.D.id+'"><summary>Check my answer</summary><ol>'+p.top.map(x=>'<li>'+x+'</li>').join('')+'</ol></details></div>'});
+ h+='<h3>🔀 Mixed quiz (all days shuffled)</h3><div class="quiz" id="rq"></div><h3>🃏 Flip cards from every day</h3><div data-flash id="rf"></div>';
+ w.innerHTML=h;
+ $$('textarea[data-k]',w).forEach(t=>{const k='rc-'+P+'-'+t.dataset.k;t.value=S.notes[k]||'';t.oninput=()=>{S.notes[k]=t.value;save()}});
+ $$('details[data-d]',w).forEach(d=>d.ontoggle=()=>{if(d.open)award('rc-'+P+'-'+d.dataset.d,3,'Recalled the day')});
+ const pool=parts.map(p=>p.Q.map(q=>({...q,d:'<a href="'+p.u+'">Day '+p.D.n+'</a>'})).sort(()=>Math.random()-.5)),Q=[],n=+w.dataset.n||8;
+ while(Q.length<n&&pool.some(a=>a.length))pool.forEach(a=>{if(a.length&&Q.length<n)Q.push(a.shift())});
+ Q.sort(()=>Math.random()-.5);quiz($('#rq',w),Q,'rquiz-'+P);
+ $('#rf',w).innerHTML=parts.map(p=>p.W.join('')).join('');flash($('#rf',w))});
 
 let pyP;const getPy=()=>pyP||(pyP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';s.onload=()=>loadPyodide().then(res,rej);s.onerror=()=>rej(new Error('Could not load the Python runtime'));document.head.append(s)}));
 $$('[data-run]').forEach(w=>{
@@ -80,12 +102,12 @@ $$('[data-run]').forEach(w=>{
 
 if(P!=='home'&&location.protocol!=='file:'){fetch('../').then(r=>r.text()).then(t=>{
  const d=new DOMParser().parseFromString(t,'text/html'),base=new URL('../',location.href),cur=location.href.split('#')[0].split('?')[0].replace(/index\.html$/,'');
- const L=[...d.querySelectorAll('.days a')].map(a=>({u:new URL(a.getAttribute('href'),base).href,n:parseInt((a.querySelector('b')||{}).textContent.replace(/\D/g,''),10)}));
+ const L=[...d.querySelectorAll('.days a')].filter(a=>/^Day/.test((a.querySelector('b')||{}).textContent||'')).map(a=>({u:new URL(a.getAttribute('href'),base).href,n:parseInt((a.querySelector('b')||{}).textContent.replace(/\D/g,''),10)}));
  const i=L.findIndex(x=>x.u===cur),navs=$$('.nav'),bot=navs[navs.length-1];if(i<0||!bot||navs.length<2)return;
  const pv=L[i-1],nx=L[i+1];
  bot.innerHTML=(pv?'<a href="'+pv.u+'">← Day '+pv.n+'</a>':'<span></span>')+(nx?'<a href="'+nx.u+'">Next: Day '+nx.n+' →</a>':'<span class="mut">Next day coming soon</span>')}).catch(()=>{})}
 
-if(P!=='home'){const lg=$('.legend');
+if(P!=='home'&&$('.legend')){const lg=$('.legend');
  const st=el('<div class="st"><b>Before you start</b> <span class="en"><button data-e="😴">😴</button><button data-e="🙂">🙂</button><button data-e="🔥">🔥</button></span><div class="ck"><label><input type="checkbox">📵 Phone away</label><label><input type="checkbox">💧 Water ready</label><label><input type="checkbox">🌿 Study scent on</label></div></div>');
  st.onclick=e=>{const b=e.target.closest('[data-e]');if(b){$$('[data-e]',st).forEach(x=>x.classList.toggle('on',x===b));award('state-'+P,3,'Energy set')}
   if($$('input',st).every(x=>x.checked))award('prep-'+P,3,'Ready to study')};
