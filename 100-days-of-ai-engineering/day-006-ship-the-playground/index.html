@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day 6 · Ship the Playground</title>
+<link rel="stylesheet" href="../../assets/style.css"><script defer src="../../assets/app.js"></script></head><body data-day="d6" data-date="2026-11-22"><main>
+<div class="nav"><a href="../">← 100 Days of AI Engineering</a><a href="../../">🏠 My Learnings</a></div>
+
+<p class="tag">AI Engineer Prep · Day 6 of 100 · Sun 22 Nov 2026 · Project day</p>
+<h1>Project Day 2: Ship the Playground</h1>
+<p class="mut">Finish the LLM playground: add a small API, polish the README, push and pin it. About 2.5 hours, then a 10-minute week review.</p>
+<div class="legend"><span style="background:var(--def)">🟣 Definition</span><span style="background:var(--key)">🟡 Key idea</span><span style="background:var(--ana)">🟢 Analogy</span><span style="background:var(--why)">🔵 Why?</span><span style="background:var(--warn)">🔴 Pitfall</span></div>
+
+<div class="box key recap"><b>⭐ Top 3 to remember</b><ol><li>One core, two doors: the CLI and the API both call the same functions.</li><li>Validate input at the edge (Pydantic) and return clear errors.</li><li>A project is finished when it is pushed, documented and pinned.</li></ol></div>
+
+<h2>0 · Warm-up (5 min)</h2>
+<div class="box why">Do your due cards first: <a href="../review/"><b>🃏 open the review</b></a>. Then recall yesterday’s RICE steps (Repo, Implement, CLI/API, Explain) without looking.</div>
+
+<h2>1 · The gist</h2>
+<div class="box key">Yesterday you built the core. Today you wrap it in an <mark>API</mark>, make it easy for a stranger to understand with a <mark>README</mark>, and <mark>publish</mark> it. Shipping is a skill interviewers look for.</div>
+
+<h2>2 · The picture to remember</h2>
+<svg data-steps viewBox="0 0 370 470" role="img" aria-label="Architecture: core logic used by CLI and API, with tests and README around it">
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="currentColor"/></marker></defs>
+<g stroke="currentColor" stroke-width="2" fill="none" marker-end="url(#a)"><path d="M165 74V98"/><path d="M165 164V188"/><path d="M165 254V278"/><path d="M165 344V368"/></g>
+<rect class="s1" x="30" y="10" width="270" height="64" rx="10"/><text x="165" y="36" text-anchor="middle" font-size="14" font-weight="700">① Core logic</text><text x="165" y="58" text-anchor="middle" font-size="12">playground_core.py + prices.json</text>
+<rect class="s2" x="30" y="100" width="270" height="64" rx="10"/><text x="165" y="126" text-anchor="middle" font-size="14" font-weight="700">② CLI door</text><text x="165" y="148" text-anchor="middle" font-size="12">python playground.py "prompt"</text>
+<rect class="s3" x="30" y="190" width="270" height="64" rx="10"/><text x="165" y="216" text-anchor="middle" font-size="14" font-weight="700">③ API door (FastAPI)</text><text x="165" y="238" text-anchor="middle" font-size="12">POST /estimate · GET /models</text>
+<rect class="s4" x="30" y="280" width="270" height="64" rx="10"/><text x="165" y="306" text-anchor="middle" font-size="14" font-weight="700">④ Tests</text><text x="165" y="328" text-anchor="middle" font-size="12">core + API with TestClient</text>
+<rect class="s5" x="30" y="370" width="270" height="64" rx="10"/><text x="165" y="396" text-anchor="middle" font-size="14" font-weight="700">⑤ README + push + pin</text><text x="165" y="418" text-anchor="middle" font-size="12">what · demo · run · choices · next</text>
+</svg>
+
+<h2>3 · Analogy</h2>
+<div class="box ana"><b>A restaurant with one kitchen and two counters.</b> Dine-in (the CLI) and delivery (the API) both order from the same kitchen (the core). Fix a recipe once and both counters improve.</div>
+
+<h2>4 · Build steps (tick as you go)</h2>
+<ul class="todo" data-todo style="list-style:none;padding-left:0">
+<li>Add a <code>cheapest_models</code> helper to the core (use today’s coding question) (30 min)</li>
+<li>Create <code>app.py</code> with <code>POST /estimate</code> and <code>GET /models</code> (40 min)</li>
+<li>Run <code>uvicorn app:app --reload</code> and try it at <code>/docs</code> (10 min)</li>
+<li>Add tests for the API with FastAPI’s <code>TestClient</code> (20 min)</li>
+<li>Write the README: what, demo screenshot, run it, design choices, next steps (30 min)</li>
+<li>Push, add topics (<code>llm</code>, <code>fastapi</code>), and pin the repo on your profile (15 min)</li>
+</ul>
+
+<h3>The API in 20 lines</h3>
+<pre><code># app.py
+import json
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from playground_core import estimate_cost
+
+app = FastAPI(title="LLM Playground")
+PRICES = json.load(open("prices.json"))
+
+class EstimateIn(BaseModel):
+    text: str
+    model: str
+    expected_output_tokens: int = Field(500, ge=0)
+
+@app.post("/estimate")
+def estimate(body: EstimateIn):
+    p = PRICES.get(body.model)
+    if p is None:
+        raise HTTPException(404, f"Unknown model: {body.model}")
+    return estimate_cost(body.text, body.expected_output_tokens, p["in"], p["out"])
+
+@app.get("/models")
+def models():
+    return list(PRICES)</code></pre>
+
+<h3>README template</h3>
+<pre><code># LLM Playground
+Estimate tokens and cost for a prompt before you call an LLM.
+
+![demo](docs/demo.png)
+
+## Run it
+git clone ... &amp;&amp; cd llm-playground
+pip install -r requirements.txt
+python playground.py "Summarise this text" --model small --out 300
+uvicorn app:app --reload      # API docs at /docs
+
+## Design choices
+- Prices live in prices.json so they can change without code changes.
+- CLI and API share one core, so both stay consistent.
+
+## Next steps
+- Exact tokenizer option, streaming cost, more models</code></pre>
+
+<h2>5 · Definitions</h2>
+<div class="grid">
+<div class="box def"><b>Endpoint</b><br>A URL plus method (like <code>POST /estimate</code>) that does one job.</div>
+<div class="box def"><b>Schema (Pydantic)</b><br>A class describing the shape and rules of the data. Bad input is rejected automatically.</div>
+<div class="box def"><b>OpenAPI /docs</b><br>The interactive page FastAPI builds for you so you can try the API in a browser.</div>
+<div class="box def"><b>Pinning a repo</b><br>Showing up to 6 repos at the top of your GitHub profile.</div>
+</div>
+
+<h2>6 · The “why?” ladder</h2>
+<div data-flash>
+<div class="box why"><b>Why share one core between the CLI and the API?</b><br>One place to fix bugs and change prices. Both doors stay consistent, and you test the logic once.</div>
+<div class="box why"><b>Why validate input with Pydantic?</b><br>Bad data is stopped at the edge with a clear error, so your core never has to guess what it received.</div>
+<div class="box why"><b>Why add a demo screenshot to the README?</b><br>People decide in seconds. A picture proves it works before they read any text or run any code.</div>
+<div class="box why"><b>Why pin the repo?</b><br>Recruiters look at your profile top first. Pinned repos are the ones you want them to see.</div>
+</div>
+<div class="box warn"><b>Pitfalls:</b> API logic copied from the CLI instead of shared · no error for an unknown model · pushing without a README · leaving secrets (none needed here) in the repo.</div>
+
+<h2>7 · Memory hooks</h2>
+<div class="box key"><b>Finish line: SHIP</b> → “Ship it!” = <b>S</b>hare the core, <b>H</b>andle bad input, <b>I</b>llustrate with a demo, <b>P</b>ublish and pin.</div>
+<div class="box ana" data-palace data-e="🏗️,🛂,🖼️,📌"><b>Memory palace: a harbour, 4 stops.</b>
+<ol><li><b>Crane:</b> one big engine lifting containers onto two ships (CLI and API). <i>(Share the core)</i></li>
+<li><b>Passport gate:</b> a guard bounces anyone with the wrong papers and prints a clear reason. <i>(Handle bad input)</i></li>
+<li><b>Billboard:</b> a giant screenshot of your tool glowing above the dock. <i>(Illustrate)</i></li>
+<li><b>Lighthouse top:</b> a flag pinned to the highest point. <i>(Publish and pin)</i></li></ol></div>
+
+<h2>8 · Weekend review (10 min)</h2>
+<div data-teach data-prompt="Write 3 lines: what I learned this week, what was hardest, and one thing I will do differently next week."></div>
+<div class="scroll"><table>
+<tr><th>Next week</th><th>Topic</th></tr>
+<tr><td>Mon 23 Nov</td><td>Where LLMs fail: hallucination, and a failure test set</td></tr>
+<tr><td>Tue 24 Nov</td><td>Choosing a model; pre-training, SFT and RLHF</td></tr>
+<tr><td>Wed 25 Nov</td><td>LLM API basics: messages, roles, SDK</td></tr>
+<tr><td>Thu 26 Nov</td><td>Structured output with Pydantic</td></tr>
+<tr><td>Fri 27 Nov</td><td>Tool and function calling by hand</td></tr>
+</table></div>
+
+<h2>9 · Coding question: pick the cheapest models</h2>
+<p class="mut">Easy–medium · 15–20 min · skills: dicts, sorting, reusing a function. <b>Attempt it first</b>, then the hint, then the solution.</p>
+<div class="box key"><b>Task.</b> <code>estimate_cost</code> is already written for you (it is yesterday’s function). Write <code>cheapest_models(text, expected_output_tokens, prices, top_n=2)</code>. <code>prices</code> maps a model name to <code>{"in": ..., "out": ...}</code> (per million tokens). Return the <code>top_n</code> cheapest models as a list of <code>(name, total_cost)</code> tuples, cheapest first. If two models cost the same, order them by name.</div>
+<pre><code>prices = {
+  "small":  {"in": 0.5, "out": 1.5},
+  "medium": {"in": 2,   "out": 8},
+  "large":  {"in": 10,  "out": 30},
+}
+cheapest_models("a" * 400, 500, prices)
+# [("small", 0.0008), ("medium", 0.0042)]
+
+cheapest_models("a" * 400, 500, prices, top_n=1)   # [("small", 0.0008)]</code></pre>
+<div data-run><script type="text/plain" class="starter">import math
+
+def estimate_cost(text, expected_output_tokens, in_price_per_m, out_price_per_m):
+    tokens_in = math.ceil(len(text) / 4)
+    cost_in = tokens_in * in_price_per_m / 1_000_000
+    cost_out = expected_output_tokens * out_price_per_m / 1_000_000
+    return {"tokens_in": tokens_in, "cost_in": round(cost_in, 6),
+            "cost_out": round(cost_out, 6), "total": round(cost_in + cost_out, 6)}
+
+def cheapest_models(text, expected_output_tokens, prices, top_n=2):
+    pass</script><script type="text/plain" class="tests">prices = {"large": {"in": 10, "out": 30}, "small": {"in": 0.5, "out": 1.5}, "medium": {"in": 2, "out": 8}}
+r = cheapest_models("a" * 400, 500, prices)
+assert [n for n, _ in r] == ["small", "medium"], "two cheapest, cheapest first"
+assert abs(r[0][1] - 0.0008) < 1e-9 and abs(r[1][1] - 0.0042) < 1e-9, "totals should match estimate_cost"
+assert cheapest_models("a" * 400, 500, prices, top_n=1)[0][0] == "small", "top_n=1"
+tie = {"b": {"in": 1, "out": 1}, "a": {"in": 1, "out": 1}}
+assert [n for n, _ in cheapest_models("hello", 10, tie, top_n=2)] == ["a", "b"], "ties sorted by name"</script></div>
+<details><summary>💡 Hint (open only after trying)</summary>Loop over <code>prices.items()</code>, call <code>estimate_cost(...)["total"]</code> for each, collect <code>(name, total)</code> tuples, then sort with <code>key=lambda x: (x[1], x[0])</code> and slice <code>[:top_n]</code>.</details>
+<details><summary>✅ Solution + explanation (open after your attempt)</summary>
+<pre><code>def cheapest_models(text, expected_output_tokens, prices, top_n=2):
+    results = []
+    for name, p in prices.items():
+        total = estimate_cost(text, expected_output_tokens, p["in"], p["out"])["total"]
+        results.append((name, total))
+    results.sort(key=lambda x: (x[1], x[0]))
+    return results[:top_n]</code></pre>
+<b>How it works</b>
+<ol>
+<li><b>Reuse, don’t rewrite.</b> The cost maths lives in one place, so a fix there fixes every caller (the one-core idea).</li>
+<li><b>Sort by a tuple</b> <code>(cost, name)</code>: Python compares the cost first and the name only on a tie, so results are deterministic.</li>
+<li><b>Slice last</b> with <code>[:top_n]</code>; asking for more than exist just returns them all, with no error.</li>
+<li><b>Cost:</b> m models means m calls plus an O(m log m) sort.</li>
+<li><b>Real-world catch:</b> cheapest is not best. Later you will also weigh quality and speed when choosing a model.</li>
+</ol>
+</details>
+
+<h2>⚡ Quick quiz</h2>
+<div class="quiz" data-q='[{"q":"Why should the CLI and API share one core module?","o":["It makes the code shorter to type","Fixes and changes happen in one place and both stay consistent","Python requires it","It makes the API faster"],"a":1,"e":"One source of truth means one place to fix and test."},{"q":"What does Pydantic do for your API?","o":["Deploys it","Validates input against a schema and rejects bad data with clear errors","Encrypts the traffic","Counts tokens"],"a":1,"e":"The model describes the allowed shape; bad input is stopped at the edge."},{"q":"What status fits an unknown model name?","o":["200 OK","404 Not Found","500 Server Error","301 Redirect"],"a":1,"e":"The model resource you asked for does not exist."},{"q":"What makes a portfolio project finished?","o":["Perfect code","Pushed, documented with a README, and pinned","Hundreds of features","A long commit history"],"a":1,"e":"Shipped and explained beats perfect and hidden."}]'></div>
+
+<h2>10 · Outcome check (say it aloud)</h2>
+<p><b>Describe how you would add a new model to the playground, and where you would change the code.</b></p>
+<details><summary>Model answer</summary>I would add one entry to <code>prices.json</code> with its input and output price per million tokens. No code changes are needed, because the core and both the CLI and API read prices from that file. I would add a test using the new model’s name and update the README’s model list.</details>
+
+<h2>11 · Spaced revision</h2>
+<div data-rev></div>
+<div class="box key recap"><b>⭐ Recap: top 3 again</b><ol><li>One core, two doors (CLI and API).</li><li>Validate at the edge; clear errors.</li><li>Finished = pushed, documented, pinned.</li></ol></div>
+<p class="mut">Tomorrow (Day 7, Monday): where LLMs fail, hallucination and how to test for it. Your cards also come up in the 🃏 review on the home page.</p>
+<div class="nav"><a href="../day-005-project-llm-playground/">← Day 5</a><span class="mut">Next day coming soon</span></div>
+</main></body></html>

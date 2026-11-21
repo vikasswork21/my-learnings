@@ -14,6 +14,8 @@ assets/style.css, app.js, days.js  shared look and interactive components
   day-003-multimodal-and-attention/
   day-004-controlling-output/
   day-005-project-llm-playground/   Saturdays: weekly recap + project
+  day-006-ship-the-playground/      Sundays: finish and ship the project
+  review/                           daily spaced-repetition cards (Leitner boxes)
   recap-month-1/                    month-end recap (auto-built from the notes)
 ```
 

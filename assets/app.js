@@ -1,13 +1,17 @@
 (()=>{
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const K='ml-progress';let S={};try{S=JSON.parse(localStorage.getItem(K))||{}}catch(e){}
-S.xp=S.xp||0;S.done=S.done||{};S.notes=S.notes||{};S.days=S.days||[];
+S.xp=S.xp||0;S.done=S.done||{};S.notes=S.notes||{};S.days=S.days||[];S.cards=S.cards||{};
 const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
 const P=document.body.dataset.day||'home';
 if(!$('link[rel~=icon]')){const cs=document.currentScript;if(cs&&cs.src){const l=document.createElement('link');l.rel='icon';l.type='image/svg+xml';l.href=new URL('favicon.svg',cs.src).href;document.head.append(l)}}
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const today=()=>iso(new Date());
 const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const INT=[1,3,7,21,45],addD=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return iso(d)};
+const dueOf=(id,date)=>S.cards[id]?S.cards[id].due:addD(date,1);
+const rate=(id,ok)=>{const c=S.cards[id]||(S.cards[id]={box:0,due:today(),lapses:0});if(ok)c.box=Math.min(4,c.box+1);else{c.box=0;c.lapses++}c.due=addD(today(),INT[c.box]);save()};
+const addXp=n=>{S.xp+=n;const t=today();if(!S.days.includes(t))S.days.push(t);save();hud()};
 const el=h=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
 function streak(){let n=0,d=new Date();const s=new Set(S.days);if(!s.has(iso(d)))d.setDate(d.getDate()-1);while(s.has(iso(d))){n++;d.setDate(d.getDate()-1)}return n}
 function hud(){const h=$('#hud');if(h)h.textContent='⚡ '+S.xp+' XP · 🔥 '+streak()+'-day streak'}
@@ -37,9 +41,9 @@ $$('[data-palace]').forEach(box=>{
 const flash=w=>{
  const g=el('<div class="fl"></div>');
  $$(':scope>.box.why',w).forEach((b,i)=>{
-  const q=$('b',b).innerHTML,a=b.innerHTML.split('<br>').slice(1).join('<br>');
-  const c=el('<div class="fc"><div class="fi"><div class="ff"><small>Tap to flip</small><br><b>'+q+'</b></div><div class="fb">'+a+'<br><button class="mini">✔ I recalled it</button></div></div></div>');
-  c.onclick=e=>{if(e.target.classList.contains('mini')){e.stopPropagation();award('fc-'+P+'-'+i,2,'Recalled!');e.target.textContent='✔ Saved';return}c.classList.toggle('flip')};
+  const q=$('b',b).innerHTML,a=b.innerHTML.split('<br>').slice(1).join('<br>'),id=b.dataset.cid||(P+':f'+i);
+  const c=el('<div class="fc"><div class="fi"><div class="ff"><small>Tap to flip</small><br><b>'+q+'</b></div><div class="fb">'+a+'<br><span class="rt"><button class="mini" data-r="1">✔ Got it</button> <button class="mini" data-r="0">✖ Missed</button></span></div></div></div>');
+  c.onclick=e=>{const r=e.target.dataset.r;if(r!==undefined){e.stopPropagation();rate(id,r==='1');if(r==='1')award('fc-'+id,2,'Recalled!');e.target.parentNode.textContent=r==='1'?'✔ Saved':'↺ Back tomorrow';return}c.classList.toggle('flip')};
   g.append(c);b.hidden=true});
  const k=el('<div class="ctl"><button>Flip all</button></div>');k.onclick=()=>$$('.fc',g).forEach(c=>c.classList.toggle('flip'));
  w.prepend(g);w.prepend(k)};
@@ -50,7 +54,7 @@ const quiz=(w,Q,key)=>{let i=0,sc=0,lock=false;const bad=new Set();
   const q=Q[i];w.innerHTML='<p><b>Q'+(i+1)+'/'+Q.length+'.</b> '+(q.d?'<small>'+q.d+'</small><br>':'')+q.q+'</p>'+q.o.map((o,j)=>'<button class="opt" data-j="'+j+'">'+o+'</button>').join('')+'<p class="fb2"></p>'};
  w.onclick=e=>{if(e.target.classList.contains('nx')){i++;draw();return}
   const b=e.target.closest('.opt');if(!b||lock)return;lock=true;const q=Q[i],j=+b.dataset.j;
-  $$('.opt',w).forEach((o,x)=>{if(x===q.a)o.classList.add('ok')});if(j===q.a)sc++;else{b.classList.add('no');if(q.d)bad.add(q.d)}
+  $$('.opt',w).forEach((o,x)=>{if(x===q.a)o.classList.add('ok')});if(j===q.a)sc++;else{b.classList.add('no');if(q.d)bad.add(q.d)}rate(q.id||(P+':q'+i),j===q.a);
   $('.fb2',w).innerHTML=(j===q.a?'✅ ':'❌ ')+q.e+' <button class="mini nx">Next →</button>'};
  draw()};
 $$('.quiz[data-q]').forEach(w=>quiz(w,JSON.parse(w.dataset.q),'quiz-'+P));
@@ -74,7 +78,7 @@ $$('[data-recap]').forEach(async w=>{
  const base=new URL('../../',location.href),ds=DAYS.filter(D=>D.date>=w.dataset.from&&D.date<=w.dataset.to);
  w.innerHTML='<p class="mut">Loading your notes…</p>';let parts;
  try{parts=await Promise.all(ds.map(D=>fetch(new URL(D.url,base)).then(r=>r.text()).then(t=>{const d=new DOMParser().parseFromString(t,'text/html'),rc=d.querySelector('.recap'),qz=d.querySelector('.quiz[data-q]');
-  return{D,u:new URL(D.url,base).href,top:rc?[...rc.querySelectorAll('li')].map(x=>x.innerHTML):[],Q:qz?JSON.parse(qz.dataset.q):[],W:[...d.querySelectorAll('[data-flash]>.box.why')].map(x=>x.outerHTML)}})))}
+  return{D,u:new URL(D.url,base).href,top:rc?[...rc.querySelectorAll('li')].map(x=>x.innerHTML):[],Q:qz?JSON.parse(qz.dataset.q):[],W:[...d.querySelectorAll('[data-flash]>.box.why')].map((x,i)=>{x.setAttribute('data-cid',D.id+':f'+i);return x.outerHTML})}})))}
  catch(e){w.textContent='Could not load the notes. Try again later.';return}
  let h='<h3>📅 At a glance: recall first, then check</h3>';
  parts.forEach(p=>{h+='<div class="box why"><b>Day '+p.D.n+' · '+p.D.title+'</b> <a class="mut" href="'+p.u+'">open notes</a><textarea rows="2" data-k="'+p.D.id+'" placeholder="From memory: the top 3 points…"></textarea><details data-d="'+p.D.id+'"><summary>Check my answer</summary><ol>'+p.top.map(x=>'<li>'+x+'</li>').join('')+'</ol></details></div>'});
@@ -82,10 +86,31 @@ $$('[data-recap]').forEach(async w=>{
  w.innerHTML=h;
  $$('textarea[data-k]',w).forEach(t=>{const k='rc-'+P+'-'+t.dataset.k;t.value=S.notes[k]||'';t.oninput=()=>{S.notes[k]=t.value;save()}});
  $$('details[data-d]',w).forEach(d=>d.ontoggle=()=>{if(d.open)award('rc-'+P+'-'+d.dataset.d,3,'Recalled the day')});
- const pool=parts.map(p=>p.Q.map(q=>({...q,d:'<a href="'+p.u+'">Day '+p.D.n+'</a>'})).sort(()=>Math.random()-.5)),Q=[],n=+w.dataset.n||8;
+ const pool=parts.map(p=>p.Q.map((q,j)=>({...q,id:p.D.id+':q'+j,d:'<a href="'+p.u+'">Day '+p.D.n+'</a>'})).sort(()=>Math.random()-.5)),Q=[],n=+w.dataset.n||8;
  while(Q.length<n&&pool.some(a=>a.length))pool.forEach(a=>{if(a.length&&Q.length<n)Q.push(a.shift())});
  Q.sort(()=>Math.random()-.5);quiz($('#rq',w),Q,'rquiz-'+P);
  $('#rf',w).innerHTML=parts.map(p=>p.W.join('')).join('');flash($('#rf',w))});
+
+$$('[data-review]').forEach(async w=>{
+ if(location.protocol==='file:'||!window.DAYS){w.textContent='Open this page from the published site.';return}
+ const base=new URL('../../',location.href),C=[];w.innerHTML='<p class="mut">Loading your cards…</p>';
+ try{await Promise.all(DAYS.map(D=>fetch(new URL(D.url,base)).then(r=>r.text()).then(t=>{const d=new DOMParser().parseFromString(t,'text/html'),u=new URL(D.url,base).href,qz=d.querySelector('.quiz[data-q]');
+  if(qz)JSON.parse(qz.dataset.q).forEach((q,j)=>C.push({id:D.id+':q'+j,D,u,t:'q',q}));
+  [...d.querySelectorAll('[data-flash]>.box.why')].forEach((b,i)=>C.push({id:D.id+':f'+i,D,u,t:'f',f:b.querySelector('b').innerHTML,a:b.innerHTML.split('<br>').slice(1).join('<br>')}))})))}
+ catch(e){w.textContent='Could not load the cards. Try again later.';return}
+ const T=today(),due=c=>dueOf(c.id,c.D.date),box=c=>S.cards[c.id]?S.cards[c.id].box:0;
+ const list=C.filter(c=>due(c)<=T).sort(()=>Math.random()-.5).slice(0,20),dist=[0,1,2,3,4].map(b=>C.filter(c=>box(c)===b).length),names=['Box 1 · daily','Box 2 · 3 days','Box 3 · weekly','Box 4 · 3 weeks','Box 5 · 6 weeks'];
+ w.innerHTML='<div class="stats"><div><b>'+C.filter(c=>due(c)<=T).length+'</b><small>due now</small></div><div><b>'+C.length+'</b><small>cards total</small></div><div><b>'+(dist[3]+dist[4])+'</b><small>well known</small></div></div><div class="demo"><b>Your Leitner boxes</b>'+dist.map((n,b)=>'<div class="br" style="grid-template-columns:110px 1fr 28px"><span>'+names[b]+'</span><div><i style="width:'+(C.length?n/C.length*100:0)+'%"></i></div><em>'+n+'</em></div>').join('')+'</div>';
+ let i=0,ok=0;const s=el('<div class="demo"></div>');w.append(s);
+ const show=()=>{delete s.dataset.l;if(i>=list.length){s.innerHTML=list.length?'<b>Done! '+ok+'/'+list.length+' correct 🎉</b><p class="mut">Missed cards come back tomorrow; known ones come back later.</p>':'<b>All caught up 🎉</b><p class="mut">Nothing due right now. Come back tomorrow.</p>';if(list.length){addXp(list.length);award('review-'+T,5,'Daily review done');if(ok===list.length)pop()}return}
+  const c=list[i],head='<small>Card '+(i+1)+'/'+list.length+' · <a href="'+c.u+'">Day '+c.D.n+'</a></small><br>';
+  s.innerHTML=c.t==='q'?head+'<p><b>'+c.q.q+'</b></p>'+c.q.o.map((o,j)=>'<button class="opt" data-j="'+j+'">'+o+'</button>').join('')+'<p class="fb2"></p>':head+'<p><b>'+c.f+'</b></p><button class="mini" data-a="show">Show answer</button><div class="ans" hidden><p>'+c.a+'</p><button class="mini" data-r="1">✔ Got it</button> <button class="mini" data-r="0">✖ Missed</button></div>'};
+ s.onclick=e=>{const c=list[i],t=e.target;if(!c)return;
+  if(t.classList.contains('nx')){i++;show();return}
+  if(t.dataset.a==='show'){$('.ans',s).hidden=false;t.hidden=true;return}
+  if(t.dataset.r!==undefined){const g=t.dataset.r==='1';rate(c.id,g);if(g)ok++;i++;show();return}
+  const b=t.closest('.opt');if(b&&!s.dataset.l){s.dataset.l=1;const g=+b.dataset.j===c.q.a;$$('.opt',s).forEach((o,x)=>{if(x===c.q.a)o.classList.add('ok')});if(!g)b.classList.add('no');rate(c.id,g);if(g)ok++;$('.fb2',s).innerHTML=(g?'✅ ':'❌ ')+c.q.e+' <button class="mini nx">Next →</button>'}};
+ show()});
 
 let pyP;const getPy=()=>pyP||(pyP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';s.onload=()=>loadPyodide().then(res,rej);s.onerror=()=>rej(new Error('Could not load the Python runtime'));document.head.append(s)}));
 $$('[data-run]').forEach(w=>{
@@ -119,9 +144,8 @@ if(P!=='home'&&$('.legend')){const lg=$('.legend');
    if(rem<=0){clearInterval(iv);if(mode==='f'){award('focus-'+P,10,'Focus block done!');mode='b';rem=300;end=Date.now()+300000;brk.hidden=false;iv=setInterval(()=>{rem=Math.max(0,Math.ceil((end-Date.now())/1000));clk.textContent=fmt(rem);if(rem<=0)rs()},1000)}else rs()}},1000)}};
  lg.before(st);lg.before(tm)}
 
-if(P==='home'&&window.DAYS&&$('#dash')){const due=[],by={};
- DAYS.forEach(D=>{const b=D.date.split('-').map(Number);[1,3,7,21].forEach((k,x)=>{const t=new Date(b[0],b[1]-1,b[2]+k);if(iso(t)<=today()&&!S.done['rev-'+D.id+'-'+x]){const o={D,k,late:iso(t)<today()};due.push(o);(by[D.id]=by[D.id]||{D,r:[]}).r.push(o)}})});
- const rows=Object.values(by);
- $('#dash').innerHTML='<h2>Today</h2><div class="stats"><div><b>'+S.xp+'</b><small>XP</small></div><div><b>'+streak()+'</b><small>day streak</small></div><div><b>'+DAYS.length+'/100</b><small>days written</small></div></div>'+
- (rows.length?'<h3>🔁 Due for revision</h3><ul class="days">'+rows.map(g=>'<li><a href="'+g.D.url+'#rev"><b>Day '+String(g.D.n).padStart(3,'0')+'</b> '+g.D.title+'</a></li>').join('')+'</ul>':'<p class="mut">Nothing due. 🎉</p>')}
+if(P==='home'&&window.DAYS&&$('#dash')){let n=0,nxt='';
+ DAYS.forEach(D=>{const c=D.cards||{q:0,f:0};[...Array(c.q).keys()].map(j=>D.id+':q'+j).concat([...Array(c.f).keys()].map(j=>D.id+':f'+j)).forEach(id=>{const du=dueOf(id,D.date);if(du<=today())n++;else if(!nxt||du<nxt)nxt=du})});
+ $('#dash').innerHTML='<h2>Today</h2><div class="stats"><div><b>'+S.xp+'</b><small>XP</small></div><div><b>'+streak()+'</b><small>day streak</small></div><div><b>'+DAYS.length+'/100</b><small>days written</small></div><div><b>'+n+'</b><small>cards due</small></div></div>'+
+ (n?'<ul class="days"><li><a href="100-days-of-ai-engineering/review/"><b>🃏 Review</b> '+n+' cards due · about '+Math.max(1,Math.round(Math.min(n,20)*.4))+' min <em>Start →</em></a></li></ul>':'<p class="mut">All caught up 🎉'+(nxt?' Next cards due '+nxt+'.':'')+'</p>')}
 })();
