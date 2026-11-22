@@ -22,14 +22,7 @@ function award(k,p,m){if(S.done[k])return false;S.done[k]=1;S.xp+=p;const t=toda
 window.ML={$,$$,el,award,S,save};
 $('main').prepend(el('<div class="hud" id="hud"></div>'));hud();
 
-$$('svg[data-steps]').forEach(svg=>{
- const R=$$('rect',svg),T=$$('text',svg),A=$$('g path',svg),N=R.length;
- const b=R.map(r=>[+r.getAttribute('y'),+r.getAttribute('y')+ +r.getAttribute('height')]);
- const own=T.map(t=>b.findIndex(([a,z])=>+t.getAttribute('y')>=a&&+t.getAttribute('y')<z));
- let n=N,tm;
- const ap=()=>{R.forEach((r,i)=>r.style.opacity=i<n?1:.12);T.forEach((t,j)=>t.style.opacity=own[j]<0||own[j]<n?1:.08);A.forEach((p,j)=>p.style.opacity=(j<N-1?j<n-1:n===N)?1:.1)};
- const c=el('<div class="ctl"><button data-a="p">▶ Play step by step</button><button data-a="a">Show all</button></div>');svg.after(c);
- c.onclick=e=>{const a=e.target.dataset.a;clearInterval(tm);if(a==='a'){n=N;ap()}if(a==='p'){if(reduce){n=N;ap();return}n=0;ap();tm=setInterval(()=>{n++;ap();if(n>=N){clearInterval(tm);award('anim-'+P,3,'Diagram watched')}},800)}}});
+$$('svg[data-steps]').forEach(svg=>{svg.style.maxWidth='320px'});
 
 $$('[data-palace]').forEach(box=>{
  const ol=$('ol',box),L=$$('li',ol),E=(box.dataset.e||'').split(','),key='pal-'+P;let i=0;
@@ -142,6 +135,8 @@ if(P!=='home'&&location.protocol!=='file:'){fetch('../').then(r=>r.text()).then(
  const i=L.findIndex(x=>x.u===cur),navs=$$('.nav'),bot=navs[navs.length-1];if(i<0||!bot||navs.length<2)return;
  const pv=L[i-1],nx=L[i+1];
  bot.innerHTML=(pv?'<a href="'+pv.u+'">← Day '+pv.n+'</a>':'<span></span>')+(nx?'<a href="'+nx.u+'">Next: Day '+nx.n+' →</a>':'<span class="mut">Next day coming soon</span>')}).catch(()=>{})}
+
+if(/^d\d+$/.test(P)){const vs=document.createElement('script');vs.src=ROOT+'assets/visuals.js';document.head.append(vs)}
 
 if(P!=='home'&&$('.legend')){const lg=$('.legend');
  const st=el('<div class="st"><b>Before you start</b> <span class="en"><button data-e="😴">😴</button><button data-e="🙂">🙂</button><button data-e="🔥">🔥</button></span><div class="ck"><label><input type="checkbox">📵 Phone away</label><label><input type="checkbox">💧 Water ready</label><label><input type="checkbox">🌿 Study scent on</label></div></div>');
