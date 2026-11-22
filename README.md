@@ -5,7 +5,7 @@ Visual study notes, hosted with GitHub Pages: https://vikasswork21.github.io/my-
 ## Structure
 
 ```
-index.html                         home + revision dashboard
+index.html                         home
 assets/style.css, app.js, days.js  shared look and interactive components
 100-days-of-ai-engineering/
   index.html                       track page (day list + progress)
@@ -16,7 +16,7 @@ assets/style.css, app.js, days.js  shared look and interactive components
   day-005-project-llm-playground/   Saturdays: weekly recap + project
   day-006-ship-the-playground/      Sundays: finish and ship the project
   review/                           daily spaced-repetition cards (Leitner boxes)
-  recap-month-1/                    month-end recap (auto-built from the notes)
+  recap-month-1/                    month-end recap page (quiz + flip cards; link added at month end)
 ```
 
 Each note: diagram, definitions, "why?" flip cards, analogy, memory palace, a coding question you can run in the browser, a quiz and a spaced-revision tracker.
