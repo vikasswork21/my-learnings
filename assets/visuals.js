@@ -3,13 +3,13 @@ const $=(q,r=document)=>r.querySelector(q),$$=(q,r=document)=>[...r.querySelecto
 const P=document.body.dataset.day||'';
 const E=h=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
 const st=document.createElement('style');
-st.textContent='.vz{margin:1.1em 0}.vz figcaption{font-weight:700;font-size:.9rem;color:var(--mut);text-align:center;margin-bottom:.4em}.vz .ft{text-align:center;color:var(--mut);font-size:.85rem;margin-top:.3em}.vz svg{display:block;margin:0 auto;height:auto}.vz .m{fill:var(--mut)}';
+st.textContent='.vz{margin:1.1em 0}.vz figcaption{font-weight:700;font-size:.9rem;color:var(--mut);text-align:center;margin-bottom:.4em}.vz .ft{text-align:center;color:var(--mut);font-size:.85rem;margin-top:.3em}.vz svg{display:block;margin:0 auto;height:auto}.vz .m{fill:var(--mut)}svg[data-steps]{max-width:min(100%,483px)!important}';
 document.head.append(st);
 const W=420;
 const wrap=(t,n)=>{const w=String(t).split(' '),L=[];let c='';w.forEach(x=>{if((c+' '+x).trim().length>n&&c){L.push(c);c=x}else c=(c+' '+x).trim()});if(c)L.push(c);return L.length?L:['']};
 const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.s||12}" text-anchor="${o.a||'start'}"${o.b?' font-weight="700"':''}${o.m?' class="m"':''}${o.f?` style="fill:${o.f}"`:''}>${t}</text>`;
 const R=(x,y,w,h,c,r=8)=>`<rect class="${c}" x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/>`;
-const fig=(cap,w,h,inner,ft,steps)=>`<figure class="vz"><figcaption>${cap}</figcaption><svg ${steps?'data-steps ':''}viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${w}px" role="img" aria-label="${cap}">${inner}</svg>${ft?`<div class="ft">${ft}</div>`:''}</figure>`;
+const fig=(cap,w,h,inner,ft,steps)=>`<figure class="vz"><figcaption>${cap}</figcaption><svg ${steps?'data-steps ':''}viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${Math.round(w*1.15)}px" role="img" aria-label="${cap}">${inner}</svg>${ft?`<div class="ft">${ft}</div>`:''}</figure>`;
 const dn=(x,y)=>`M${x} ${y}V${y+14}M${x-5} ${y+8}L${x} ${y+14}L${x+5} ${y+8}`;
 
 const flow=o=>{const bw=340,x0=(W-bw)/2,n=o.s.length;let y=8,body='',ar='';
