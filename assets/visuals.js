@@ -3,22 +3,27 @@ const $=(q,r=document)=>r.querySelector(q),$$=(q,r=document)=>[...r.querySelecto
 const P=document.body.dataset.day||'';
 const E=h=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild};
 const st=document.createElement('style');
-st.textContent='.vz{margin:1.1em 0}.vz figcaption{font-weight:700;font-size:.9rem;color:var(--mut);text-align:center;margin-bottom:.4em}.vz .ft{text-align:center;color:var(--mut);font-size:.85rem;margin-top:.3em}.vz svg{display:block;margin:0 auto;height:auto}.vz .m{fill:var(--mut)}svg[data-steps]{max-width:min(100%,483px)!important}';
+st.textContent='.vz{margin:1.1em 0}.vz figcaption{font-weight:700;font-size:.9rem;color:var(--mut);text-align:center;margin-bottom:.4em}.vz .ft{text-align:center;color:var(--mut);font-size:.85rem;margin-top:.3em}.vz svg{display:block;margin:0 auto;height:auto}.vz .m{fill:var(--fg);opacity:.72}svg[data-steps]{max-width:min(100%,483px)!important}'+
+ '.vz rect.f1{fill:#cfe2ff;stroke:#5b8def}.vz rect.f2{fill:#e1d4fb;stroke:#8a63e0}.vz rect.f3{fill:#c9efd9;stroke:#34a56b}.vz rect.f4{fill:#ffe6a0;stroke:#e0a800}.vz rect.f5{fill:#ffd0d0;stroke:#e05555}.vz rect[class^=f]{stroke-width:1.6}'+
+ '@media (prefers-color-scheme:dark){.vz rect.f1{fill:#1f3a66;stroke:#4f86e0}.vz rect.f2{fill:#3a2b66;stroke:#8a63e0}.vz rect.f3{fill:#1c4a33;stroke:#34a56b}.vz rect.f4{fill:#5a4710;stroke:#c99700}.vz rect.f5{fill:#5a2222;stroke:#e05555}}';
 document.head.append(st);
 const W=420;
 const wrap=(t,n)=>{const w=String(t).split(' '),L=[];let c='';w.forEach(x=>{if((c+' '+x).trim().length>n&&c){L.push(c);c=x}else c=(c+' '+x).trim()});if(c)L.push(c);return L.length?L:['']};
 const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.s||12}" text-anchor="${o.a||'start'}"${o.b?' font-weight="700"':''}${o.m?' class="m"':''}${o.f?` style="fill:${o.f}"`:''}>${t}</text>`;
-const R=(x,y,w,h,c,r=8)=>`<rect class="${c}" x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/>`;
-const fig=(cap,w,h,inner,ft,steps)=>`<figure class="vz"><figcaption>${cap}</figcaption><svg ${steps?'data-steps ':''}viewBox="0 0 ${w} ${h}" style="width:100%;max-width:${Math.round(w*1.15)}px" role="img" aria-label="${cap}">${inner}</svg>${ft?`<div class="ft">${ft}</div>`:''}</figure>`;
+const R=(x,y,w,h,c,r=8)=>`<rect class="${c.replace(/^s/,'f')}" x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}"/>`;
+const fig=(cap,w,h,inner,ft,steps)=>`<figure class="vz"><figcaption>${cap}</figcaption><svg ${steps?'data-steps ':''}viewBox="0 0 ${w} ${Math.ceil(h)}" style="width:100%;max-width:${Math.round(w*1.15)}px" role="img" aria-label="${cap}">${inner}</svg>${ft?`<div class="ft">${ft}</div>`:''}</figure>`;
 const dn=(x,y)=>`M${x} ${y}V${y+14}M${x-5} ${y+8}L${x} ${y+14}L${x+5} ${y+8}`;
 
-const flow=o=>{const bw=340,x0=(W-bw)/2,n=o.s.length;let y=8,body='',ar='';
- o.s.forEach((s,i)=>{const sub=wrap(s[1]||'',46),h=Math.max(46,30+sub.length*15);
-  body+=R(x0,y,bw,h,'s'+(i%5+1),10)+`<circle cx="${x0+18}" cy="${y+h/2}" r="10" style="fill:var(--fg);stroke:none"/>`+T(x0+18,y+h/2+4,i+1,{s:11,a:'middle',f:'var(--bg)'})+T(x0+40,y+19,s[0],{s:14,b:1})+sub.map((l,k)=>T(x0+40,y+36+k*15,l,{s:12,m:1})).join('');
+const CN='①②③④⑤⑥⑦⑧⑨';
+const flow=o=>{const bw=320,x0=(W-bw)/2,n=o.s.length,subs=o.s.map(s=>wrap(s[1]||'',46)),ml=Math.max(...subs.map(x=>x.length)),h=Math.max(56,36+ml*15);let y=8,body='',ar='';
+ o.s.forEach((s,i)=>{body+=R(x0,y,bw,h,'s'+(i%5+1),10)+T(W/2,y+22,CN[i]+' '+s[0],{s:14,a:'middle',b:1})+subs[i].map((l,k)=>T(W/2,y+40+k*15,l,{s:12,a:'middle',m:1})).join('');
   if(i<n-1)ar+=`<path d="${dn(W/2,y+h)}"/>`;
   y+=h+(i<n-1?18:0)});
  if(o.loop){y+=24;body+=T(W/2,y,'↻ '+o.loop,{s:12,a:'middle',m:1})}
  return fig(o.cap,W,y+10,`<g stroke="currentColor" stroke-width="2" fill="none">${ar}</g>`+body,'',1)};
+const stack=o=>{const tot=o.s.reduce((a,x)=>a+x[2],0),H=290,bw=320,x0=(W-bw)/2;let y=8,b='';
+ o.s.forEach((s,i)=>{const h=Math.max(34,s[2]/tot*H);b+=R(x0,y,bw,h,'s'+(i%5+1),6)+(h>=48&&s[1]?T(W/2,y+h/2-2,s[0],{s:13,a:'middle',b:1})+T(W/2,y+h/2+14,s[1],{s:11,a:'middle',m:1}):T(W/2,y+h/2+4,s[0]+(s[1]?' · '+s[1]:''),{s:12.5,a:'middle',b:1}));y+=h+3});
+ return fig(o.cap,W,y+28,b+T(W/2,y+16,o.foot||'',{s:12,a:'middle',m:1}))};
 
 const cw8=s=>[...s].reduce((a,ch)=>a+(ch.charCodeAt(0)>127?12:8),0);
 const chips=o=>{let y=6,b='';
@@ -59,40 +64,47 @@ const patches=o=>{const s=Math.min(44,Math.floor((W-40)/o.c)),x0=(W-o.c*s)/2,n=o
  let y=8+o.r*s+10;b+=T(W/2,y+8,'↓ each patch becomes one token',{s:12,a:'middle',m:1});y+=20;
  const k=Math.min(n,7),tw=k*42+64;let x=(W-tw)/2;for(let i=0;i<k;i++){b+=R(x,y,38,24,'s'+(i%5+1),6)+T(x+19,y+16,'p'+(i+1),{s:11,a:'middle'});x+=42}b+=R(x,y,62,24,'s1',6)+T(x+31,y+16,'… p'+n,{s:11,a:'middle'});
  return fig(o.cap,W,y+34,b)};
-const V={flow,chips,cmp,seg,bars,tbars,lanes,patches};
+const V={flow,stack,chips,cmp,seg,bars,tbars,lanes,patches};
 
 const SP={
 d1:[
+ {main:1,t:'flow',cap:'One loop of an LLM: text in, next token out',s:[['Text in','“The famous Hyderabadi …”'],['Tokens','The · famous · Hyder · abadi'],['Numbers','each token → an embedding'],['Layers','tokens look at each other'],['Probabilities','biryani 71% · haleem 12% …'],['Pick + append','“… biryani” goes back in']],loop:'repeats until the answer is complete'},
  {at:'4 ·',t:'chips',cap:'What tokens look like (illustrative split and ids)',rows:[{l:'Text: “The famous Hyderabadi biryani”',i:[['The','464'],[' famous','3814'],[' Hyder','21017'],['abadi','5342'],[' biryani','60113']]}],foot:'Each chunk gets an id, then a list of numbers (its embedding).'},
  {at:'5 ·',t:'cmp',cap:'Three things that look alike but work differently',cols:[{h:'Database',s:[['Query','SELECT … WHERE'],['Finds a stored row','exact match'],['Returns that row','same every time']]},{h:'Search engine',s:[['Query','keywords'],['Looks up an index','pages on the web'],['Returns links','you read them']]},{h:'LLM',s:[['Prompt','your text'],['Predicts tokens','from learned numbers'],['Generates new text','not looked up']]}]},
  {at:'7 ·',t:'flow',cap:'From base model to chat assistant',s:[['Pre-training','predict the next token on huge text'],['Base model','brilliant autocomplete, not helpful'],['SFT','learn from question → answer examples'],['RLHF','humans rank answers, model is nudged'],['Chat assistant','follows instructions, hedges, refuses']]}
 ],
 d2:[
+ {main:1,t:'stack',cap:'The context window is one shared budget',s:[['System prompt','rules + role, sent every call',1],['Chat history','resent in full on every turn',3],['Retrieved docs (RAG)','pasted-in knowledge',2],['Your question','',1],['Room for the answer','reserved output budget',1.6]],foot:'input + output ≤ window limit'},
  {at:'4 ·',t:'chips',cap:'Same meaning, different token counts (illustrative)',rows:[{l:'English: 5 tokens',i:[['The'],[' famous'],[' Hyder'],['abadi'],[' biryani']]},{l:'Hindi or Telugu: more, smaller pieces',i:[['प्र'],['सिद्ध'],[' है'],['दरा'],['बादी'],[' बि'],['रया'],['नी']]}],foot:'More tokens means more cost and less room in the window.'},
  {at:'5 ·',t:'seg',cap:'Where the time goes (example: 8.5 s in total)',s:[['wait for first token','0.5 s',0.5,'c5'],['generating 400 tokens at 50 per second','8 s',8,'c1']]},
  {at:'5 ·',t:'seg',cap:'Where the money goes (example: $0.010 per call)',s:[['input: 3,000 tokens','$0.006',6,'c2'],['output: 500 tokens','$0.004',4,'c3']]},
  {at:'7 ·',t:'bars',cap:'Why long chats get pricier: input tokens per turn (illustrative)',rows:[['Turn 1',800],['Turn 2',1100],['Turn 3',1400],['Turn 4',1700],['Turn 5',2000]],max:2000,unit:' tok',foot:'The whole history is resent every turn, so the input keeps growing.'}
 ],
 d3:[
+ {main:1,t:'flow',cap:'How any input becomes a reply',s:[['Inputs','text · image · audio · PDF'],['Slice into pieces','words · image patches · audio frames'],['Map to numbers','every piece → an embedding'],['Attend','every piece looks at every other'],['Reply','the next token comes out']]},
  {at:'3 ·',t:'lanes',cap:'Different inputs, one model',rows:[[['Text'],['Image'],['Audio']],[['Tokens in one shared number space']],[['The same attention layers']],[['Next token out']]]},
  {at:'4 ·',t:'patches',cap:'An image becomes a grid of patch tokens (4 × 6 shown)',r:4,c:6},
  {at:'5 ·',t:'flow',cap:'One attention step for one token',s:[['Query','what this token needs'],['Compare with Keys','dot product ÷ √d'],['softmax','scores → weights that sum to 1'],['Blend Values','weighted sum'],['New vector','the token now carries context']]}
 ],
 d4:[
+ {main:1,t:'flow',cap:'From scores to one chosen token',s:[['Scores (logits)','one raw score per token'],['÷ temperature','low = sharper · high = flatter'],['softmax','scores → probabilities'],['Trim: top-k / top-p','drop unlikely tokens'],['Sample one token','append it and repeat']]},
  {at:'3 ·',t:'tbars',cap:'Temperature reshapes the same scores',logits:[3,1.4,.7,.2],labels:['biryani','haleem','kebab','chai'],T:[0.3,1,2],foot:'Low T: one clear winner. High T: nearly a coin toss.'},
  {at:'5 ·',t:'bars',cap:'Trimming the tail (green = kept, grey = dropped)',cols:[{h:'top-k = 3',rows:[['biryani',55,'k'],['haleem',20,'k'],['kebab',12,'k'],['chai',8,'d'],['dum',5,'d']]},{h:'top-p = 0.9',rows:[['biryani',55,'k'],['haleem',20,'k'],['kebab',12,'k'],['chai',8,'k'],['dum',5,'d']]}],foot:'top-k always keeps 3. top-p keeps tokens until their total reaches 90%, here 4.'},
  {at:'6 ·',t:'cmp',cap:'Where the thinking happens',cols:[{h:'Normal model',s:[['Question',''],['Answer straight away','fast, cheaper']]},{h:'Reasoning model',s:[['Question',''],['Thinking tokens','hidden scratchpad, billed as output'],['Answer','better on multi-step problems']]}]}
 ],
 d5:[
+ {main:1,t:'flow',cap:'What the playground does',s:[['Prompt in','text + expected answer length'],['Estimate tokens','chars ÷ 4, or a real tokenizer'],['Pick model prices','from prices.json'],['Compute cost','in × price + out × price'],['Show result','CLI first, then an API']]},
  {at:'Part A',top:1,t:'flow',cap:'Your week 1 in one line',s:[['Day 1','an LLM predicts the next token'],['Day 2','tokens, window, cost, latency'],['Day 3','attention and Q, K, V'],['Day 4','temperature, top-k, top-p'],['Day 5','build: LLM playground']]}
 ],
 d6:[
+ {main:1,t:'lanes',cap:'One core, two doors',rows:[[['Core logic','playground_core.py + prices.json']],[['CLI door','python playground.py'],['API door','FastAPI: POST /estimate']],[['Tests','pytest + TestClient'],['README + push + pin','what · demo · run']]]},
  {at:'The API in 20 lines',t:'flow',cap:'Life of one request',s:[['Client','POST /estimate {text, model}'],['Pydantic','validates the body'],['Lookup','prices.json[model] (404 if missing)'],['estimate_cost','tokens × price'],['Response','JSON with tokens and costs']]}
 ]
 };
 
 const place=sp=>{
  const node=E(V[sp.t](sp));
+ if(sp.main){const sv=$('main>svg[data-steps]');if(sv)sv.replaceWith(node);return}
  const hs=$$('main h2,main h3'),i=hs.findIndex(h=>h.textContent.trim().startsWith(sp.at));if(i<0)return;
  if(sp.top)hs[i].after(node);else{const nx=hs[i+1];if(nx)nx.before(node);else{const nv=$$('main .nav');const l=nv[nv.length-1];l?l.before(node):$('main').append(node)}}};
 (SP[P]||[]).forEach(sp=>{try{place(sp)}catch(e){}});
